@@ -1,0 +1,520 @@
+/*
+ * While Compiler
+ * http://code.google.com/p/while-language/
+ *
+ * Copyright (C) 2009 Einar Egilsson [einar@einaregilsson.com]
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  
+ * $HeadURL: https://while-language.googlecode.com/svn/branches/Boo/While.ATG $
+ * $LastChangedDate: 2009-02-25 15:21:32 +0100 (mið., 25 feb. 2009) $
+ * $Author: einar@einaregilsson.com $
+ * $Revision: 2 $
+ */
+COMPILER Program
+	
+
+def ExpectBool(exp as Expression, t as Token, isRightHandSide as bool):
+	if not exp isa BoolExpression:
+		if isRightHandSide:
+			errors.SemErr(t.line, t.col, "'${t.val}' expects a boolean expression on its right side")
+		else:
+			errors.SemErr(t.line, t.col, "'${t.val}' expects a boolean expression on its left side")
+		return false
+	return true
+		
+def ExpectInt(exp as Expression, t as Token, isRightHandSide as bool):
+	if not exp isa IntExpression:
+		if isRightHandSide:
+			errors.SemErr(t.line, t.col, "'${t.val}' expects a integer expression on its right side")
+		else:
+			errors.SemErr(t.line, t.col, "'${t.val}' expects a integer expression on its left side")
+		return false
+	return true
+
+def ExpectIntArg(exp as Expression, t as Token):
+	if not exp isa IntExpression:
+		errors.SemErr(t.line, t.col, "Arguments to procedures can only be integer expressions")
+
+def ToStmtSeq(s as Statement) as StatementSequence:
+	if s isa StatementSequence:
+		return cast(StatementSequence,s)
+	else:
+		return StatementSequence((s,))
+
+
+def IsStartOfResultArg() as bool:
+	t as Token = scanner.Peek()
+	scanner.ResetPeek()
+	return t.val == "res"
+
+def IsProcProgram() as bool:
+	t as Token = scanner.Peek()
+	scanner.ResetPeek()
+	return t.val == "proc"
+
+CHARACTERS
+  letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_".
+  digit = "0123456789".
+  cr  = '\r'.
+  lf  = '\n'.
+  tab = '\t'.
+
+TOKENS
+  ident  = letter {letter | digit}.
+  number = digit {digit}.
+
+COMMENTS FROM "/*" TO "*/" NESTED
+COMMENTS FROM "//" TO lf
+COMMENTS FROM "#" TO lf
+
+IGNORE cr + lf + tab
+
+PRODUCTIONS
+
+Program<>
+=                                          				(.	statements as StatementSequence
+															procs = Dictionary[of string, Procedure]() .)
+
+   	(
+    IF(IsProcProgram())
+    	"begin"											 (.	startTok = t .)
+    	Proc<procs>
+    	{
+    		Proc<procs>
+    	}
+
+    	StmtSeq<statements>
+    	"end"											(.	endTok = t .)
+    |
+    	StmtSeq<statements>
+    )
+    
+    													(.	WhileTree.Instance = WhileTree(statements, procs)
+															if startTok and endTok:
+																WhileTree.Instance.AddSequencePoint(startTok)
+																WhileTree.Instance.AddSequencePoint(endTok)
+														.)
+.
+
+Proc<procs as Dictionary[of string, Procedure]>
+=														(.	statements as StatementSequence
+															name as string 
+															valArgs = List[of Variable]()
+															resultArg as Variable .)
+	"proc"												(.	ptok = t .)
+	ident												(.	name = t.val .)
+	"("
+	[
+		(
+			"val"
+			ident										(.	valArgs.Add(Variable(t.val,IsValueArg:true))
+															VariableStack.DefineArgument(t.val) .)
+			[Args<valArgs, resultArg>]
+		|
+			"res"
+			ident										(.	resultArg = Variable(t.val,IsResultArg:true)
+															VariableStack.DefineResultArgument(t.val).)
+		)
+	]
+	")"													(.	seq1 = (ptok.line,ptok.col, t.line,t.col+t.val.Length) .)
+	"is"
+	StmtSeq<statements>
+	"end"												(.	seq2 = t .)
+	";"													(.	if procs.ContainsKey(name):
+																errors.SemErr(ptok.line, ptok.col, "Procedure '${name}' is already declared")
+															else:
+																proc = Procedure(name, valArgs, resultArg, statements)
+																proc.AddSequencePoint(seq1)
+																proc.AddSequencePoint(seq2)
+																procs.Add(name, proc)
+															VariableStack.Clear()
+														.)
+.
+
+Args<valArgs as List[of Variable], ref resultArg as Variable> 
+=
+	(
+	IF(IsStartOfResultArg()) 
+	","
+	"res" 
+	ident									(.	resultArg = Variable(t.val,IsResultArg:true)
+												if VariableStack.IsDeclaredInCurrentScope(t.val):
+													errors.SemErr(t.line, t.col, "Argument '${t.val}' is already declared in this scope")
+												else:
+													VariableStack.DefineResultArgument(t.val)
+											.)
+	|
+	","
+	ident									(.	valArgs.Add(Variable(t.val,IsValueArg:true)) 
+												if VariableStack.IsDeclaredInCurrentScope(t.val):
+													errors.SemErr(t.line, t.col, "Argument '${t.val}' is already declared in this scope")
+												else:
+													VariableStack.DefineArgument(t.val)
+											.)
+	[Args<valArgs, resultArg>] 
+	)
+.
+
+StmtSeq<ref statements as StatementSequence>  
+=													(. 	stmt as Statement 
+														slist = List[of Statement]().)
+    Stmt<stmt>                         				(. slist.Add(stmt) .)
+    {
+        ';' Stmt<stmt>                 				(. slist.Add(stmt) .)
+    }                                      			(. statements = StatementSequence(slist) .)
+.
+
+Stmt<ref stmt as Statement>                   
+=													(. 	exp as Expression 
+														sl,sc = la.line, la.col
+														stmtSeq as StatementSequence.)
+
+	( AssignStmt<stmt>								(. stmt.AddSequencePoint((sl,sc, t.line,t.col+t.val.Length)) .)
+	| "skip"                               			(. stmt = Skip();stmt.AddSequencePoint(t) .)
+	| BlockStmt<stmt>                       
+	| IfStmt<stmt>
+	| WhileStmt<stmt>
+	| ReadStmt<stmt>								(. 	stmt.AddSequencePoint((sl,sc, t.line,t.col+t.val.Length)).)
+	| "write" Expr<exp>                				(. 	stmt = Write(exp); stmt.AddSequencePoint((sl,sc, t.line,t.col+t.val.Length)) .)
+	| CallProc<stmt>								(. 	stmt.AddSequencePoint((sl,sc, t.line,t.col+t.val.Length)) .)
+	| 
+		'(' 										(.	bf = t .)
+		StmtSeq<stmtSeq> 
+		')'											(.	stmt = stmtSeq
+														stmt.AddSequencePoint(bf)
+														stmt.AddSequencePoint(t) .)
+		
+	)
+.
+
+ReadStmt<ref stmt as Statement>
+=
+	"read" 
+	(
+		ident                         				(. 	stmt = Read(Variable(t.val)) .)
+		|
+		'(' 
+		ident										(. 	stmt = Read(Variable(t.val)) .)
+		')'
+	)
+.
+
+VarDecStmt<ref vars as VariableDeclarationSequence>
+=													(. list = List[of VariableDeclaration]() .)
+	VarDec<list>
+	{
+	    VarDec<list>
+	}												(. vars = VariableDeclarationSequence(list) .)
+.
+
+VarDec<list as List[of VariableDeclaration]>
+=
+	"var" 											(. sl,sc,el,ec = t.line,t.col,la.line,la.col+la.val.Length .)
+	ident                             				(. 	if VariableStack.IsDeclaredInCurrentScope(t.val):
+															errors.SemErr(t.line, t.col, "Variable '${t.val}' is already declared in this scope") 
+														elif VariableStack.IsInScope(t.val):
+															errors.Warning(t.line, t.col, "Variable '${t.val}' hides variable with same name in outer block")
+															VariableStack.DefineVariable(t.val)
+														else:
+															VariableStack.DefineVariable(t.val) 
+														vd = VariableDeclaration(Variable(t.val))
+														vd.AddSequencePoint((sl,sc,el,ec))
+														list.Add(vd) .)
+	';'
+.
+
+BlockStmt<ref block as Statement>                 
+=
+	"begin"                                 		(.	if CompileOptions.BookVersion:
+															errors.SemErr(t.line, t.col, "Variable declarations are only allowed when using the /coursesyntax switch. Type 'wc.exe /help' for more information")
+															System.Environment.Exit(1)
+														vars as VariableDeclarationSequence
+														VariableStack.PushScope()
+														sl,sc,el,ec = t.line,t.col,t.line,t.col+t.val.Length .)
+	[ VarDecStmt<vars> ]							(. statements as StatementSequence .)
+	StmtSeq<statements>                
+	"end"                       					(. 	block = Block(vars, statements) 
+														block.AddSequencePoint((sl,sc,el,ec))
+														block.AddSequencePoint(t)
+														VariableStack.PopScope() .)
+.
+
+AssignStmt<ref assign as Statement>            		(. 	exp as Expression 
+														var as Variable .)
+=	ident                                  			(. 	var = Variable(t.val) 
+														if not VariableStack.IsInScope(t.val) and not CompileOptions.BookVersion:
+																errors.SemErr(t.line, t.col, "Assignment to undeclared variable '${t.val}'") .)
+	":="											(. tok = t .)
+	Expr<exp>                          				(. return unless ExpectInt(exp, tok, true) .)
+													(. assign = Assign(var, exp) .)
+.
+
+IfStmt<ref ifStmt as Statement>           			(. 	ifBranch as StatementSequence; 
+														elseBranch as StatementSequence
+														tmpStmt as Statement
+														exp as Expression
+														sl as int
+														sc as int
+														el as int
+														ec as int
+													.)
+=
+	"if"											(.  sl,sc,tok = t.line, t.col, t .)
+	Expr<exp>										(.	return unless ExpectBool(exp, tok, true) .)
+	"then"											(. 	el,ec = t.line, t.col+t.val.Length .)
+	
+	(
+		IF(CompileOptions.BookVersion) 
+			Stmt<tmpStmt>							(.	ifBranch = ToStmtSeq(tmpStmt) .)
+			[
+			    "else"
+				Stmt<tmpStmt>						(.	elseBranch = ToStmtSeq(tmpStmt) .)	
+			]
+		|
+			StmtSeq<ifBranch>
+			[
+			    "else"
+			    StmtSeq<elseBranch>
+			]
+			"fi"									(.	ifBranch.AddSequencePoint(t)
+														elseBranch.AddSequencePoint(t) if elseBranch
+													.)
+
+	)
+		                                  			(. 	ifStmt = If(exp, ifBranch, elseBranch) 
+														ifStmt.AddSequencePoint((sl,sc,el,ec))
+													.)
+.
+
+WhileStmt<ref whileStmt as Statement>          		(.	exp as Expression
+														whileBranch as StatementSequence
+														branchStmt as Statement
+														sl as int
+														sc as int
+														el as int
+														ec as int.)
+=
+	"while"											(. 	sl,sc,tok = t.line, t.col,t .)
+	Expr<exp>										(. 	return unless ExpectBool(exp, tok, true) .)
+	"do"											(.	el,ec = t.line, t.col+t.val.Length .)
+	(
+		IF(CompileOptions.BookVersion)
+		Stmt<branchStmt>							(.	whileBranch = ToStmtSeq(branchStmt) .)
+	|
+		StmtSeq<whileBranch>
+		"od"										(.	whileBranch.AddSequencePoint(t) .)
+	)
+		                                   			(. 	whileStmt = While(exp, whileBranch) 
+														whileStmt.AddSequencePoint((sl,sc,el,ec))
+													.)
+.
+
+CallProc<ref callStmt as Statement>
+=													(.	exp as Expression
+														list = List[of Expression]()	.)
+	"call"											(.	callToken = t 
+														exprToken as Token.)
+	ident											(.	proc = t.val .)
+	"("
+	[
+													(.	exprToken = la .)
+		Expr<exp>									(.	list.Add(exp); ExpectIntArg(exp, exprToken) .)
+		{ 
+			"," 									(.	exprToken = la .)
+			Expr<exp>								(.	list.Add(exp); ExpectIntArg(exp, exprToken) .)
+		}
+	]
+	")"												(.	callStmt = Call(proc, list, callToken, exprToken) .)
+.
+
+
+Expr<ref exp as Expression>
+=	
+    LogicOr<exp>                      
+.
+
+
+LogicOr<ref exp as Expression>                	(. second as Expression .)
+=	
+    LogicAnd<exp>                      
+    {
+        "or"          							(. tok = t .)
+        LogicAnd<second>						(.	return unless ExpectBool(exp, tok, false) 
+													return unless ExpectBool(second, tok, true) 
+													exp = LogicBinaryOp(exp, second, LogicBinaryOp.Or) .)
+    }                                       
+.
+
+LogicAnd<ref exp as Expression>                	(. second as Expression .)                
+=	
+    LogicXor<exp>
+    {                            
+        "and"                    				(. 	tok = t .)
+        LogicXor<second>						(.	return unless ExpectBool(exp, tok, false) 
+													return unless ExpectBool(second, tok, true) 
+													exp = LogicBinaryOp(exp, second, LogicBinaryOp.And) .)
+    }
+.
+
+LogicXor<ref exp as Expression>                	(. second as Expression .)                
+=	
+    Comparison<exp>
+    {                            
+        "xor"                    				(. 	tok = t .)
+        Comparison<second>						(.	return unless ExpectBool(exp, tok, false) 
+													return unless ExpectBool(second, tok, true) 
+													exp = LogicBinaryOp(exp, second, LogicBinaryOp.Xor) .)
+    }
+.
+
+Comparison<ref exp as Expression>           	(.	second as Expression 
+													op as string .)
+=
+    BitOr<exp>
+    [
+        (
+        "<"                            			(.	op = ComparisonBinaryOp.LessThan .)
+        |
+        ">"                                		(.	op = ComparisonBinaryOp.GreaterThan .)
+        |
+        "<="                               		(.	op = ComparisonBinaryOp.LessThanOrEqual .)
+        |
+        ">="                               		(.	op = ComparisonBinaryOp.GreaterThanOrEqual .)
+		|
+        "=="                               		(.	op = ComparisonBinaryOp.Equal.)
+        |
+        "!="                               		(.	op = ComparisonBinaryOp.NotEqual .)
+        
+        )										(. 	tok = t .)
+        Comparison<second>						(.	return unless ExpectInt(exp, tok, false) 
+													return unless ExpectInt(second, tok, true) 
+													exp = ComparisonBinaryOp(exp, second, op) .)
+    ]
+.
+
+BitOr<ref exp as Expression>                	(.	second as Expression .)                  
+=	
+    BitXor<exp>
+    {
+        "|"       								(. 	tok = t .)
+        BitXor<second>                 			(.	return unless ExpectInt(exp, tok, false) 
+													return unless ExpectInt(second, tok, true) 
+													exp = BitBinaryOp(exp, second, BitBinaryOp.Or) .)
+    }
+.
+
+BitXor<ref exp as Expression>                	(.	second as Expression .)                 
+=	
+    BitAnd<exp>
+    {
+        "^"     								(.	tok = t .)
+        BitAnd<second>                 			(.	return unless ExpectInt(exp, tok, false) 
+													return unless ExpectInt(second, tok, true) 
+													exp = BitBinaryOp(exp, second, BitBinaryOp.Xor) .)
+    }
+.
+
+BitAnd<ref exp as Expression>                	(.	second as Expression .)                 
+=	
+    BitShift<exp>
+    {
+        "&"                             		(. 	tok = t .)
+        BitShift<second>                  		(.	return unless ExpectInt(exp, tok, false) 
+													return unless ExpectInt(second, tok, true) 
+													exp = BitBinaryOp(exp, second, BitBinaryOp.And) .)
+    }
+.
+
+BitShift<ref exp as Expression>                	(.	second as Expression
+													op as string .)               
+=	
+    PlusMinus<exp>
+    {
+        (
+        "<<"                               		(.	op = BitBinaryOp.ShiftLeft .)
+        |
+        ">>"                               		(.	op = BitBinaryOp.ShiftRight .)
+        )             							(. 	tok = t .)
+        PlusMinus<second>              			(.	return unless ExpectInt(exp, tok, false) 
+													return unless ExpectInt(second, tok, true) 
+													exp = BitBinaryOp(exp, second, op).)
+    }
+.
+
+PlusMinus<ref exp as Expression>                (. 	second as Expression 
+													op as string.)              
+=	
+    MulDivMod<exp>
+    {
+        (
+        "+"                                		(. 	op = ArithmeticBinaryOp.Plus .)
+        |
+        "-"                                		(. 	op = ArithmeticBinaryOp.Minus .)
+        )             							(. 	tok = t .)
+        MulDivMod<second>              			(.	return unless ExpectInt(exp, tok, false) 
+													return unless ExpectInt(second, tok, true) 
+													exp = ArithmeticBinaryOp(exp, second, op) .)
+    }
+.
+
+MulDivMod<ref exp as Expression>                (. second as Expression .)              
+=	
+    UnaryOperator<exp>
+    {
+        (
+        "*"                                		(. 	op = ArithmeticBinaryOp.Multiplication .)
+        |
+        "/"                                		(. 	op = ArithmeticBinaryOp.Division .)
+        |
+        "%"                                		(. 	op = ArithmeticBinaryOp.Modulo .)
+        )             							(. 	tok = t .)
+        UnaryOperator<second>          			(.	return unless ExpectInt(exp, tok, false) 
+													return unless ExpectInt(second, tok, true) 
+													exp = ArithmeticBinaryOp(exp, second, op) .)
+    }
+.
+
+
+UnaryOperator<ref exp as Expression>          	(.	op as string = null .)
+=                               
+	[
+	'-'                                    		(. 	op = t.val .)
+	|
+	'~'                                    		(. 	op = t.val .)
+	|
+	"not"                                  		(. 	op = t.val .)
+												(.	tok = t .)
+	]
+	Terminal<exp>                      			(.	if op in ('-','~'): 
+														return unless ExpectInt(exp, tok, true)
+														exp = IntUnaryOp(exp, op)
+													elif op == 'not':
+														return unless ExpectBool(exp, tok, true)
+														exp = NotUnaryOp(exp) .)
+.
+
+Terminal<ref exp as Expression>               
+=
+	( ident                                		(. 	exp = Variable(t.val) 
+													if not VariableStack.IsInScope(t.val) and not CompileOptions.BookVersion:
+														errors.SemErr(t.line, t.col, "Undeclared variable '${t.val}'") .)
+	| number                               		(. exp = Number(int.Parse(t.val)) .)
+	| "true"                               		(. exp = Bool(true) .)
+	| "false"                              		(. exp = Bool(false) .)
+	| '(' Expr<exp> ')'
+	)
+.
+
+END Program.
