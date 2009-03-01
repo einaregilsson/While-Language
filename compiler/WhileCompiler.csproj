@@ -39,6 +39,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="AST\Node.cs" />
+    <Compile Include="AST\Statements.cs" />
     <Compile Include="SymbolTable.cs">
       <SubType>Code</SubType>
     </Compile>
