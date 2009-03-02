@@ -7,8 +7,8 @@
     <ProjectGuid>{FC3B3989-9516-491F-BCA6-F124CF0A0770}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>WhileCompiler</RootNamespace>
-    <AssemblyName>WhileCompiler</AssemblyName>
+    <RootNamespace>While</RootNamespace>
+    <AssemblyName>wc</AssemblyName>
     <StartupObject>
     </StartupObject>
   </PropertyGroup>
@@ -39,6 +39,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="AST\Node.cs" />
+    <Compile Include="AST\Procedure.cs" />
+    <Compile Include="AST\Sequences.cs" />
+    <Compile Include="AST\WhileProgram.cs" />
     <Compile Include="AST\Statements.cs" />
     <Compile Include="SymbolTable.cs">
       <SubType>Code</SubType>

@@ -55,25 +55,40 @@ namespace While.AST {
     /// The base for all nodes in the abstract syntax tree.
     /// Just contains some utility methods.
     /// </summary>
-    public abstract class Node {
+    public abstract class Node : IEnumerable<Node> {
 
 
         public abstract void Compile(ILGenerator il);
-        protected List<Node> _children = new List<Node>();
+        private List<Node> _children = new List<Node>();
         public List<Node> ChildNodes { get { return _children; } }
         protected static SymbolTable _symTable = new SymbolTable();
         public static SymbolTable SymbolTable { get { return _symTable; } }
         protected static ISymbolDocumentWriter _debugWriter;
         protected List<SequencePoint> _sequencePoints = new List<SequencePoint>();
-        
+        protected static ModuleBuilder _module;
+
+        public static ISymbolDocumentWriter DebugWriter {
+            get { return _debugWriter; }
+            set { _debugWriter = value; }
+        }
+
+        public static ModuleBuilder Module {
+            get { return _module; }
+            set { _module = value; }
+        }
+
         protected void MarkSequencePoint(ILGenerator il, SequencePoint seq) {
             il.MarkSequencePoint(_debugWriter, seq.StartLine, seq.StartCol, seq.EndLine, seq.EndCol);
         }
 
         public Node this[int index] {
             get { return _children[index]; }
+            set { _children[index] = value; }
         }
 
+        protected void AddChild(Node child) {
+            _children.Add(child);
+        }
         //public void AddSequencePoint(Token t) {
         //    _sequencePoints.Add(new SequencePoint(t.line, t.col, t.line, t.col + t.val.Length));
         //}
@@ -91,5 +106,26 @@ namespace While.AST {
                 }
             }
         }
+
+        public IEnumerator<Node> GetEnumerator() {
+            return _children.GetEnumerator();
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() {
+            return this.GetEnumerator();
+        }
+
+        protected string Join(System.Collections.IEnumerable items, string sep) {
+            List<string> temp = new List<string>();
+            foreach (object item in items) {
+                if (item == null) {
+                    temp.Add("null");
+                } else {
+                    temp.Add(item.ToString());
+                }
+            }
+            return string.Join(sep, temp.ToArray());
+        }
+
     }
 }

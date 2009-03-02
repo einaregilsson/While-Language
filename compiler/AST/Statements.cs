@@ -25,8 +25,12 @@
 using While;
 using While.AST;
 using While.AST.Expressions;
+using While.AST.Sequences;
 using System.Reflection.Emit;
 using System.Collections.Generic;
+using System.Text;
+using System.Reflection;
+using System;
 
 namespace While.AST.Statements {
 
@@ -34,325 +38,388 @@ namespace While.AST.Statements {
         protected string Indent(string str) {
             return "\t" + str.ToString().Replace("\n", "\n\t");
         }
-
-        protected string Join(IEnumerable<object> items, string sep) {
-            return null;
-        }
     }
 
-    public class StatementSequence : Statement {
+
+    public class VariableDeclaration : Statement {
+
+        public Variable Variable {
+            get { return (Variable)this[0]; }
+            set { this[0] = value; }
+        }
+
+        public VariableDeclaration(Variable var) {
+            AddChild(var);
+        }
 
         public override string ToString() {
-            return Join(_children, ";\n");
+            return "var " + Variable.ToString();
         }
 
-        public void Compile(ILGenerator il) {
-            if (_sequencePoints.Count > 1) { //If there's just one then we assume it is after the sequence (for "fi" && "od")
-                EmitDebugInfo(il, 0, true);
-            }
-            foreach (Statement s in ChildNodes) {			
-                s.Compile(il);
-            }
-            if (_seqPoints.Count > 0) {
-                EmitDebugInfo(il, _sequencePoints.Count-1, true)
+        public override void Compile(ILGenerator il) {
+            EmitDebugInfo(il, 0, true);
+            SymbolTable.DefineVariable(Variable.Name);
+            LocalBuilder lb = il.DeclareLocal(typeof(int));
+            if (CompileOptions.Debug) {
+                lb.SetLocalSymInfo(Variable.Name);
             }
         }
     }
 
 
+    /// <summary>
+    /// Assign an integer expression to a variable
+    /// </summary>
+    public class Assign : Statement {
 
-    //class VariableDeclarationSequence : Node {
-    //"""List of variable declarations"""
-    //    VariableDeclaration _vars*
+        public Variable Variable {
+            get { return (Variable)this[0]; }
+            set { this[0] = value; }
+        }
 
-    //    public void constructor(VariableDeclaration vars*) {
-    //        _vars = vars;
+        public TypedExpression<int> Expression {
+            get { return (TypedExpression<int>)this[1]; }
+            set { this[1] = value; }
+        }
 
-    //    public override string ToString() {
-    //        return join(_vars, ";\n") + ";\n"
+        public Assign(Variable var, TypedExpression<int> exp) {
+            AddChild(var);
+            AddChild(exp);
+        }
 
-    //    public void Compile(ILGenerator il) {
-    //        foreach (v in_vars) {			v.Compile(il)
+        public override string ToString() {
+            return Variable.ToString() + " := " + Expression.ToString();
+        }
 
-    //class Assign : Statement {
-    //"""Assign an integer expression to a variable"""
-    //    [Getter(Variable)]
-    //    Variable _var;
-    //    [Getter(Expression)]
-    //    IntExpression _exp;
+        public override void Compile(ILGenerator il) {
+            EmitDebugInfo(il, 0, false);
 
-    //    public void constructor(Variable var, IntExpression exp) {
-    //        _var = var;
-    //        _exp = exp;
+            //Declare at first use
+            if (CompileOptions.BookVersion && !SymbolTable.IsInScope(Variable.Name)) {
+                SymbolTable.DefineVariable(Variable.Name);
+                LocalBuilder lb = il.DeclareLocal(typeof(int));
+                if (CompileOptions.Debug) {
+                    lb.SetLocalSymInfo(Variable.Name);
+                }
+            }
 
-    //    public override string ToString() {
-    //        return "${_var} := ${_exp}"
+            if (SymbolTable.IsResultArgument(Variable.Name)) {
+                il.Emit(OpCodes.Ldarg, SymbolTable.GetValue(Variable.Name));
+                Expression.Compile(il);
+                il.Emit(OpCodes.Stind_I4);
+            } else if (SymbolTable.IsArgument(Variable.Name)) {
+                Expression.Compile(il);
+                il.Emit(OpCodes.Starg, SymbolTable.GetValue(Variable.Name));
+            } else {
+                Expression.Compile(il);
+                il.Emit(OpCodes.Stloc, SymbolTable.GetValue(Variable.Name));
+            }
+        }
+    }
 
-    //    public void Compile(ILGenerator il) {
-    //        EmitDebugInfo(il,0, false)
+    public class Skip : Statement {
 
-    //        //Declare at first use
-    //        if (CompileOptions.BookVersion && !VariableStack.IsInScope(_var.Name)) {
-    //            VariableStack.DefineVariable(_var.Name)
-    //            lb = il.DeclareLocal(typeof(int))
-    //            if (CompileOptions.Debug) {
-    //                lb.SetLocalSymInfo(_var.Name)
+        public override string ToString() {
+            return "skip";
+        }
 
-    //        if (VariableStack.IsResultArgument(_var.Name)) {
-    //            il.Emit(OpCodes.Ldarg, VariableStack.GetValue(_var.Name))
-    //            _exp.Compile(il)
-    //            il.Emit(OpCodes.Stind_I4)
-    //            }
-    //        } else if (VariableStack.IsArgument(_var.Name)) {
-    //            _exp.Compile(il)
-    //            il.Emit(OpCodes.Starg, VariableStack.GetValue(_var.Name))
-    //            }
-    //        } else {
-    //            _exp.Compile(il)
-    //            il.Emit(OpCodes.Stloc, VariableStack.GetValue(_var.Name))
+        public override void Compile(ILGenerator il) {
+            EmitDebugInfo(il, 0, true);
+            //Nop only emitted in debug build, otherwise nothing is emitted
+        }
+    }
+    public class Token { public int line, col;}
+    public class Call : Statement {
 
-    //class Skip : Statement {
-    //"""No effect"""
-    //    public override string ToString() {
-    //        return "skip"
+        private string _name;
+        public string ProcedureName {
+            get { return _name; }
+            set { _name = value; }
+        }
 
-    //    public void Compile(ILGenerator il) {
-    //        EmitDebugInfo(il,0,true)
-    //        //Nop only emitted in debug build, otherwise nothing is emitted
+        private Token _callToken;
+        private Token _lastArgToken;
 
-    //class Call : Statement {
-    //"""Procedure call"""
-    //    [getter(Expressions)]
-    //    List _expr[of Expression]
-    //    [getter(ProcedureName)]
-    //    string _name;
+        public List<Node> Expressions {
+            get { return this.ChildNodes; }
+        }
 
-    //    [getter(CallToken)]
-    //    Token _callToken;
-    //    [getter(LastArgumentToken)]
-    //    Token _lastArgToken;
+        public Call(string name, List<Expression> expressions, Token callToken, Token lastArgToken) {
+            foreach (Expression ex in expressions) {
+                AddChild(ex);
+            }
+            _name = name;
+            _callToken = callToken;
+            _lastArgToken = lastArgToken;
+        }
 
-    //    public void constructor(string name, List expressions[of Expression], callToken, lastArgToken) {
-    //        _expr = expressions;
-    //        _name = name;
-    //        _callToken = callToken;
-    //        _lastArgToken = lastArgToken;
+        public override string ToString() {
+            return string.Format("call {0}({1})", ProcedureName, Join(this, ", "));
+        }
 
-    //    public override string ToString() {
-    //        return "call ${_name}(${join(_expr, ', ')})"
+        public void SanityCheck() {
+            int l = _callToken.line;
+            int c = _callToken.col;
 
-    //    public void SanityCheck() {
-    //        l,c = _callToken.line, _callToken.col;
+            if (!WhileProgram.Instance.Procedures.ContainsProcedure(ProcedureName)) {
+                System.Console.Error.WriteLine(string.Format("({0},{1}) ERROR: Procedure '{2}' is not defined", l, c, ProcedureName));
+                System.Environment.Exit(1);
+            }
 
-    //        if (not WhileTree.Instance.Procedures.ContainsKey(ProcedureName)) {
-    //            System.Console.Error.WriteLine("(${l},${c}) ERROR: Procedure '${_name}' is not defined")
-    //            System.Environment.Exit(1)
+            Procedure proc = WhileProgram.Instance.Procedures.GetByName(ProcedureName);
+            if (this.Expressions.Count != proc.ArgumentCount) {
+                System.Console.Error.WriteLine(string.Format("({0},{1}) ERROR: Procedure '{2}' does not take {3} arguments", l, c, ProcedureName, Expressions.Count));
+                System.Environment.Exit(1);
+            }
 
-    //        proc = WhileTree.Instance.Procedures[ProcedureName]
-    //        if (_expr.Count != proc.ArgumentCount) {
-    //            System.Console.Error.WriteLine("(${l},${c}) ERROR: Procedure '${_name}' does not take ${_expr.Count} arguments")
-    //            System.Environment.Exit(1)
+            if (proc.HasResultArgument && !(Expressions[Expressions.Count - 1] is Variable)) {
+                System.Console.Error.WriteLine(string.Format("({0},{1}) ERROR: Only variables are allowed for result arguments", _lastArgToken.line, _lastArgToken.col));
+                System.Environment.Exit(1);
+            }
+        }
 
-    //        if (proc.ResultArg && !_expr[_expr.Count-1] isa Variable) {
-    //            System.Console.Error.WriteLine("(${_lastArgToken.line},${_lastArgToken.col}) ERROR: Only variables are allowed for result arguments")
-    //            System.Environment.Exit(1)
+        public override void Compile(ILGenerator il) {
+            EmitDebugInfo(il, 0, false);
+            SanityCheck();
+            if (this.ChildNodes.Count > 0) {
+                for (int i = 0; i < ChildNodes.Count - 1; i++) {
+                    this[i].Compile(il);
+                }
+                Procedure proc = WhileProgram.Instance.Procedures.GetByName(ProcedureName);
+                if (proc.HasResultArgument) {
+                    Variable v = (Variable)this[ChildNodes.Count - 1];
+                    //Create at first use
+                    if (CompileOptions.BookVersion && !SymbolTable.IsInScope(v.Name)) {
+                        SymbolTable.DefineVariable(v.Name);
+                        LocalBuilder lb = il.DeclareLocal(typeof(int));
+                        if (CompileOptions.Debug) {
+                            lb.SetLocalSymInfo(v.Name);
+                        }
+                    }
 
-    //    public void Compile(ILGenerator il) {
-    //        EmitDebugInfo(il,0,false)
-    //        SanityCheck()		
-    //        if (_expr.Count > 0) {
-    //            foreach (i inrange(0, _expr.Count-1)) {				_expr[i].Compile(il)
-    //            }
-    //            proc = WhileTree.Instance.Procedures[ProcedureName]
-    //            if (proc.ResultArg) {
-    //                Variable v = cast(Variable,_expr[_expr.Count-1])
-    //                //Create at first use
-    //                if (CompileOptions.BookVersion && !VariableStack.IsInScope(v.Name)) {
-    //                    VariableStack.DefineVariable(v.Name)
-    //                    lb = il.DeclareLocal(typeof(int))
-    //                    if (CompileOptions.Debug) {
-    //                        lb.SetLocalSymInfo(v.Name)
+                    if (SymbolTable.IsResultArgument(v.Name)) {
+                        il.Emit(OpCodes.Ldarg, SymbolTable.GetValue(v.Name));
+                    } else if (SymbolTable.IsArgument(v.Name)) {
+                        il.Emit(OpCodes.Ldarga, SymbolTable.GetValue(v.Name));
+                    } else {
+                        il.Emit(OpCodes.Ldloca, SymbolTable.GetValue(v.Name));
+                    }
 
-    //                if (VariableStack.IsResultArgument(v.Name)) {
-    //                    il.Emit(OpCodes.Ldarg, VariableStack.GetValue(v.Name))
-    //                } else if (VariableStack.IsArgument(v.Name)) {
-    //                    il.Emit(OpCodes.Ldarga, VariableStack.GetValue(v.Name))
-    //                } else {
-    //                    il.Emit(OpCodes.Ldloca, VariableStack.GetValue(v.Name))
+                } else {
+                    this[ChildNodes.Count - 1].Compile(il);
+                }
+            }
+            il.Emit(OpCodes.Call, WhileProgram.Instance.Procedures.Compiled[ProcedureName]);
+        }
+    }
 
-    //            } else {
-    //                _expr[_expr.Count-1].Compile(il)
+    /// <summary>
+    /// Write an expression to the screen
+    /// </summary>
+    public class Write : Statement {
 
-    //        il.Emit(OpCodes.Call, WhileTree.Instance.CompiledProcedures[_name])
+        public Expressions.Expression Expression {
+            get { return (Expressions.Expression)this[0]; }
+            set { this[0] = value; }
+        }
 
+        public Write(Expression exp) {
+            AddChild(exp);
+        }
 
-    //class VariableDeclaration : Statement {
-    //"""Declare a variable (only with /CourseSyntax switch)"""
-    //    [Getter(Variable)]
-    //    Variable _var;
+        public override string ToString() {
+            return "write " + Expression.ToString();
+        }
 
-    //    public void constructor(Variable var) {
-    //        _var = var;
+        public override void Compile(ILGenerator il) {
+            EmitDebugInfo(il, 0, false);
+            Expression.Compile(il);
+            MethodInfo mi;
+            Type[] argTypes = new Type[1];
+            if (Expression is TypedExpression<bool>) {
+                argTypes[0] = typeof(bool);
+            } else if (Expression is TypedExpression<int>) {
+                argTypes[0] = typeof(int);
+            }
+            mi = typeof(System.Console).GetMethod("WriteLine", argTypes);
+            il.Emit(OpCodes.Call, mi);
+        }
+    }
 
-    //    public override string ToString() {
-    //        return "var ${_var}"
+    /// <summary>
+    /// Read an integer from the user
+    /// </summary>
+    public class Read : Statement {
 
-    //    public void Compile(ILGenerator il) {
-    //        EmitDebugInfo(il,0, true)
-    //        VariableStack.DefineVariable(_var.Name);
-    //        lb = il.DeclareLocal(typeof(int))
-    //        if (CompileOptions.Debug) {
-    //            lb.SetLocalSymInfo(_var.Name)
+        public Variable Variable {
+            get { return (Variable)this[0]; }
+            set { this[0] = value; }
+        }
 
+        public Read(Variable var) {
+            AddChild(var);
+        }
 
-    //class Write : Statement {
-    //"""Write an expression to the screen"""
-    //    [Getter(Expression)]
-    //    Expression _exp;
+        public override string ToString() {
+            return "read " + Variable;
+        }
 
-    //    [property(TextWriter)]
-    //    private static _writer = System.Console.Out;
+        public override void Compile(ILGenerator il) {
+            EmitDebugInfo(il, 0, false);
+            Label startLabel = il.DefineLabel();
+            il.MarkLabel(startLabel);
+            il.Emit(OpCodes.Ldstr, Variable.Name + ": ");
+            il.Emit(OpCodes.Call, typeof(System.Console).GetMethod("Write", new Type[] { typeof(string) }));
+            il.Emit(OpCodes.Call, typeof(System.Console).GetMethod("ReadLine"));
 
-    //    public void constructor(exp) {
-    //        _exp = exp;
+            if (CompileOptions.BookVersion && !SymbolTable.IsInScope(Variable.Name)) {
+                SymbolTable.DefineVariable(Variable.Name);
+                LocalBuilder lb = il.DeclareLocal(typeof(int));
+                if (CompileOptions.Debug) {
+                    lb.SetLocalSymInfo(Variable.Name);
+                }
+            }
 
-    //    public override string ToString() {
-    //        return "write ${_exp}"
+            if (SymbolTable.IsResultArgument(Variable.Name)) {
+                il.Emit(OpCodes.Ldarg, SymbolTable.GetValue(Variable.Name));
+            } else if (SymbolTable.IsArgument(Variable.Name)) {
+                il.Emit(OpCodes.Ldarga_S, SymbolTable.GetValue(Variable.Name));
+            } else {
+                il.Emit(OpCodes.Ldloca_S, SymbolTable.GetValue(Variable.Name));
+            }
 
-    //    public void Compile(ILGenerator il) {
-    //        EmitDebugInfo(il,0,false)
-    //        _exp.Compile(il)
-    //        if (_exp isa BoolExpression) {
-    //            mi = typeof(System.Console).GetMethod("WriteLine", (typeof(bool),))
-    //            }
-    //        } else if (_exp isa IntExpression) {
-    //            mi = typeof(System.Console).GetMethod("WriteLine", (typeof(int),))
-    //            }
-    //            }
-    //        il.Emit(OpCodes.Call, mi)
+            il.Emit(OpCodes.Call, typeof(int).GetMethod("TryParse", new Type[] { typeof(string), typeof(int).MakeByRefType() }));
+            il.Emit(OpCodes.Brfalse, startLabel);
+        }
+    }
+    
+    
+    /// <summary>
+    /// Block with variable declarations && statements
+    /// </summary>
+    public class Block : Statement {
 
-    //class Read : Statement {
-    //"""Read an integer from the user"""
-    //    [Getter(Variable)]
-    //    Variable _var;
+        public VariableDeclarationSequence Variables {
+            get { return (VariableDeclarationSequence) this[0];}
+            set { this[0] = value;}
+        }
 
-    //    public void constructor(Variable var) {
-    //        _var = var;
+        public StatementSequence Statements {
+            get { return (StatementSequence) this[1];}
+            set { this[1] = value;}
+        }
 
-    //    public override string ToString() {
-    //        return "read ${_var}"
+        public Block(VariableDeclarationSequence vars, StatementSequence stmts) {
+            AddChild(vars);
+            AddChild(stmts);
+        }
 
-    //    public void Compile(ILGenerator il) {
-    //        EmitDebugInfo(il,0,false)
-    //        startLabel = il.DefineLabel()
-    //        il.MarkLabel(startLabel)
-    //        il.Emit(OpCodes.Ldstr, "${_var.Name}: ");
-    //        il.Emit(OpCodes.Call, typeof(System.Console).GetMethod("Write", (typeof(string),)))
-    //        il.Emit(OpCodes.Call, typeof(System.Console).GetMethod("ReadLine"))
+        public override string ToString() {
+            return string.Format("begin\n{0}\n{1}\nend", Indent(Variables.ToString()), Indent(Statements.ToString()));
+        }
 
-    //        if (CompileOptions.BookVersion && !VariableStack.IsInScope(_var.Name)) {
-    //            VariableStack.DefineVariable(_var.Name)
-    //            lb = il.DeclareLocal(typeof(int))
-    //            if (CompileOptions.Debug) {
-    //                lb.SetLocalSymInfo(_var.Name)
+        public override void Compile(ILGenerator il) {
+            SymbolTable.PushScope();
+            il.BeginScope();
+            EmitDebugInfo(il, 0, true);
+            if (CompileOptions.Debug) {
+                il.Emit(OpCodes.Nop); //To step correctly
+            }
+            if (Variables != null) {
+                Variables.Compile(il);
+            }
+            Statements.Compile(il);
+            il.EndScope();
+            SymbolTable.PopScope();
+            EmitDebugInfo(il, 1, true);
+        }
+    }
 
-    //        if (VariableStack.IsResultArgument(_var.Name)) {
-    //            il.Emit(OpCodes.Ldarg, VariableStack.GetValue(_var.Name))
-    //            }
-    //        } else if (VariableStack.IsArgument(_var.Name)) {
-    //            il.Emit(OpCodes.Ldarga_S, VariableStack.GetValue(_var.Name))
-    //            }
-    //        } else {
-    //            il.Emit(OpCodes.Ldloca_S, VariableStack.GetValue(_var.Name))
+    /// <summary>
+    /// If-Else branching
+    /// </summary>
+    public class If : Statement {
 
-    //        il.Emit(OpCodes.Call, typeof(int).GetMethod("TryParse", (typeof(string),typeof(int).MakeByRefType())))
-    //        il.Emit(OpCodes.Brfalse, startLabel)
+        public TypedExpression<bool> Expression {
+            get { return (TypedExpression<bool>)this[0]; }
+            set { this[0] = value; }
+        }
 
-    //class Block : Statement {
-    //"""Block with variable declarations && statements"""
-    //    [Getter(Variables)]
-    //    VariableDeclarationSequence _vars;
-    //    [Getter(Statements)]
-    //    StatementSequence _stmts;
+        public StatementSequence IfBranch {
+            get { return (StatementSequence)this[1]; }
+            set { this[1] = value; }
+        }
 
-    //    public void constructor(VariableDeclarationSequence vars, StatementSequence stmts) {
-    //        _vars = vars;
-    //        _stmts = stmts;
+        public StatementSequence ElseBranch {
+            get { return (StatementSequence)this[2]; }
+            set { this[2] = value; }
+        }
 
-    //    public override string ToString() {
-    //        return "begin\n${Indent(_vars)}\n${Indent(_stmts)}\nend"
+        public If(TypedExpression<bool> exp, StatementSequence ifBranch, StatementSequence elseBranch) {
+            AddChild(exp);
+            AddChild(ifBranch);
+            AddChild(elseBranch);
+        }
 
-    //    public void Compile(ILGenerator il) {
-    //        VariableStack.PushScope()
-    //        il.BeginScope()
-    //        EmitDebugInfo(il,0,true)
-    //        if (CompileOptions.Debug) {
-    //            il.Emit(OpCodes.Nop) //To step correctly
-    //            }
-    //            }
-    //        _vars.Compile(il) if _vars;
-    //        _stmts.Compile(il)
-    //        il.EndScope()
-    //        VariableStack.PopScope()
-    //        EmitDebugInfo(il, 1, true)
+        public override string ToString() {
+            string s = string.Format("if {0} then\n{1}", Expression, Indent(IfBranch.ToString()));
+            if (ElseBranch != null) {
+                s += string.Format("\nelse\n{0}", Indent(ElseBranch.ToString()));
+            }
+            s += "\nfi";
+            return s;
+        }
 
+        public override void Compile(ILGenerator il) {
+            EmitDebugInfo(il, 0, false);
+            Expression.Compile(il);
+            Label ifFalseLabel = il.DefineLabel();
+            Label endLabel = il.DefineLabel();
+            il.Emit(OpCodes.Brfalse, ifFalseLabel);
+            IfBranch.Compile(il);
+            il.Emit(OpCodes.Br, endLabel);
+            il.MarkLabel(ifFalseLabel);
+            if (ElseBranch != null) {
+                ElseBranch.Compile(il);
+            }
+            il.MarkLabel(endLabel);
+        }
+    }
 
-    //class if () { Statement {
-    //"""If-Else branching"""
-    //    [Getter(Expression)]
-    //    BoolExpression _exp;
-    //    [Getter(IfBranch)]
-    //    StatementSequence _ifBranch;
-    //    [Getter(ElseBranch)]
-    //    StatementSequence _elseBranch;
+    /// <summary>
+    /// While loop
+    /// </summary>
+    public class While : Statement {
 
-    //    public void constructor(BoolExpression exp, StatementSequence ifBranch, StatementSequence elseBranch) {
-    //        _exp = exp;
-    //        _ifBranch = ifBranch;
-    //        _elseBranch = elseBranch;
+        public While(TypedExpression<bool> exp, StatementSequence statements) {
+            AddChild(exp);
+            AddChild(statements);
+        }
 
-    //    public override string ToString() {
-    //        if (_elseBranch) {
-    //            return "if ${_exp} then\n${Indent(_ifBranch)}\nelse\n${Indent(_elseBranch)}\nfi"
-    //            }
-    //        } else {
-    //            return "if ${_exp} then\n${Indent(_ifBranch)}\nfi"
+        public TypedExpression<bool> Expression {
+            get { return (TypedExpression<bool>)this[0]; }
+            set { this[0] = value; }
+        }
 
-    //    public void Compile(ILGenerator il) {
-    //        EmitDebugInfo(il,0,false)
-    //        _exp.Compile(il)
-    //        ifFalseLabel = il.DefineLabel()
-    //        endLabel = il.DefineLabel()
-    //        il.Emit(OpCodes.Brfalse, ifFalseLabel)
-    //        _ifBranch.Compile(il)
-    //        il.Emit(OpCodes.Br, endLabel)		
-    //        il.MarkLabel(ifFalseLabel)
-    //        _elseBranch.Compile(il) if _elseBranch;
-    //        il.MarkLabel(endLabel)
+        public StatementSequence Statements {
+            get { return (StatementSequence)this[1]; }
+            set { this[1] = value; }
+        }
 
-    //class While : Statement {
-    //"""While loop"""
-    //    [Getter(Expression)]
-    //    BoolExpression _exp;
-    //    [Getter(Statements)]
-    //    StatementSequence _statements;
+        public override string ToString() {
+            return string.Format("while {0} do\n{1}\nod", Expression, Indent(Statements.ToString()));
+        }
 
-    //    public void constructor(BoolExpression exp, StatementSequence statements) {
-    //        _exp = exp;
-    //        _statements = statements;
-
-    //    public override string ToString() {
-    //        return "while ${_exp} do\n${Indent(_statements)}\nod"
-
-    //    public void Compile(ILGenerator il) {
-    //        EmitDebugInfo(il,0,false)
-
-    //        evalConditionLabel = il.DefineLabel()
-    //        afterTheLoopLabel = il.DefineLabel()
-    //        il.MarkLabel(evalConditionLabel)
-    //        _exp.Compile(il)
-    //        il.Emit(OpCodes.Brfalse, afterTheLoopLabel)
-    //        _statements.Compile(il)
-    //        il.Emit(OpCodes.Br, evalConditionLabel)		
-    //        il.MarkLabel(afterTheLoopLabel)
+        public override void Compile(ILGenerator il) {
+            EmitDebugInfo(il, 0, false);
+            Label evalConditionLabel = il.DefineLabel();
+            Label afterTheLoopLabel = il.DefineLabel();
+            il.MarkLabel(evalConditionLabel);
+            Expression.Compile(il);
+            il.Emit(OpCodes.Brfalse, afterTheLoopLabel);
+            Statements.Compile(il);
+            il.Emit(OpCodes.Br, evalConditionLabel);
+            il.MarkLabel(afterTheLoopLabel);
+        }
+    }
 }

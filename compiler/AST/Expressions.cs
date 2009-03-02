@@ -133,14 +133,14 @@ namespace While.AST.Expressions {
 
     public abstract class BinaryOp<T, ChildType> : TypedExpression<T> where ChildType : Expression {
 
-        public ChildType Left { get { return (ChildType)_children[0]; } }
-        public ChildType Right { get { return (ChildType)_children[1]; } }
+        public ChildType Left { get { return (ChildType)this[0]; } }
+        public ChildType Right { get { return (ChildType)this[1]; } }
         protected OpCode _opCode;
         protected string _opString;
 
         public BinaryOp(ChildType left, ChildType right, OpCode opCode, string opString) {
-            _children.Add(left);
-            _children.Add(right);
+            AddChild(left);
+            AddChild(right);
             _opCode = opCode;
         }
 
@@ -372,14 +372,14 @@ namespace While.AST.Expressions {
 
     public abstract class UnaryOp<T, ExpressionType> : TypedExpression<T> where ExpressionType : Expression{
         public ExpressionType Expression {
-            get { return (ExpressionType)_children[0]; }
-            set { _children[0] = value; }
+            get { return (ExpressionType)this[0]; }
+            set { this[0] = value; }
         }
 
         protected OpCode _opCode;
         protected string _opString;
         public UnaryOp(ExpressionType exp, OpCode opCode, string opString) {
-            _children.Add(exp);
+            AddChild(exp);
             _opCode = opCode;
             _opString = opString;
         }

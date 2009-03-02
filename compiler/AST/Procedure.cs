@@ -28,96 +28,127 @@ using System.Reflection;
 using System.Reflection.Emit;
 using While.AST.Expressions;
 using While.AST.Statements;
+using While.AST.Sequences;
 
 namespace While.AST {
 
-/// <summary>
-/// Procedure class. A procedure can take 0-1 value arguments and;
-/// 0-1 result argument that must be the last one.
-/// </summary>
-public class Procedure : Node {
+    /// <summary>
+    /// Procedure class. A procedure can take 0-1 value arguments and;
+    /// 0-1 result argument that must be the last one.
+    /// </summary>
+    public class Procedure : Node {
 
-    private List<Variable> _valueArgs = new List<Variable>();
-    public List<Variable> ValueArgs { get { return _valueArgs; }}
-	
-    private Variable _resultArg;
-    public Variable ResultArg { get { return _resultArg; }}
-	
-    [getter(Statements)]
-    StatementSequence _stmts;
-    [getter(Name)]
-    string _name;
-	
-    public void constructor(string name, List valArgs[of Variable], Variable resultArg, StatementSequence statements) {
-        _valArgs = valArgs;
-        _resultArg = resultArg;
-        _stmts = statements;
-        _name = name;
-		
+        public VariableSequence ValueArguments {
+            get { return (VariableSequence)this[0]; }
+        }
 
-    int ArgumentCount) {		get) {			if (_resultArg) {
-                return _valArgs.Count+1
-            }
-            } else {
-                return _valArgs.Count;
+        public Variable ResultArgument {
+            get { return (Variable)this[1]; }
+            set { this[1] = value; }
+        }
 
-    public void Compile(ILGenerator il) {
-        foreach (arg in_valArgs) {			VariableStack.DefineArgument(arg.Name)
-            }
-        if (_resultArg) {
-            VariableStack.DefineResultArgument(_resultArg.Name)
-            }
-        EmitDebugInfo(il, 0, true)
-        _stmts.Compile(il)
-        EmitDebugInfo(il, 1, true)
-        il.Emit(OpCodes.Ret)
-        VariableStack.Clear()
+        public StatementSequence Statements {
+            get { return (StatementSequence)this[2]; }
+            set { this[2] = value; }
+        }
 
-				
-    public void CompileSignature(ModuleBuilder module) {
-    """
-        Compiles the signature for the procedure but not the body.
-        This needs to be done first so that other methods can 
-        call this method, this way we don't have problems with;
-        dependencies between methods.
-    """
-        argCount = _valArgs.Count;
-        if (_resultArg) { argCount += 1
-        argtypes = array(Type, argCount)
-        foreach (i inrange(0, argCount)) {			argtypes[i] = typeof(int)
+        string _name;
+        public string Name {
+            get { return _name; }
+            set { _name = value; }
+        }
+
+        public int ArgumentCount {
+            get {
+                if (ResultArgument != null) {
+                    return ValueArguments.ChildNodes.Count + 1;
+                } else {
+                    return ValueArguments.ChildNodes.Count;
+                }
             }
-        if (_resultArg) {
-            argtypes[-1] = typeof(int).MakeByRefType()
-			
-        method = module.DefineGlobalMethod(_name, MethodAttributes.HideBySig | MethodAttributes.Static | MethodAttributes.Public, typeof(void), argtypes)
-        pos = 1
-        foreach (arg in _valArgs) {			VariableStack.DefineArgument(arg.Name)
-            method.DefineParameter(pos, ParameterAttributes.In, arg.Name)
-            pos += 1
-			
-        if (_resultArg) {
-            VariableStack.DefineArgument(_resultArg.Name)
-            method.DefineParameter(pos, ParameterAttributes.Out, _resultArg.Name)
+        }
+
+        public bool HasResultArgument {
+            get { return ResultArgument != null; }
+        }
+
+        public Procedure(string name, List<Variable> valArgs, Variable resultArg, StatementSequence statements) {
+            AddChild(new VariableSequence(valArgs));
+            AddChild(resultArg);
+            AddChild(statements);
+            _name = name;
+        }
+
+
+
+        public override void Compile(ILGenerator il) {
+            foreach (Variable arg in ValueArguments) {
+                SymbolTable.DefineArgument(arg.Name);
             }
-        VariableStack.Clear()
-        return method;
-		
-		
-    public override string ToString() {
-        s = "procedure ${_name}("
-        if (_valArgs.Count > 0) {
-            s += "val "
-            s += _valArgs[0]
-            foreach (i in range(1, _valArgs.Count)) {				s += ", " + _valArgs[i]
+            if (HasResultArgument) {
+                SymbolTable.DefineResultArgument(ResultArgument.Name);
             }
-            if (_resultArg) {
-                s += ", res " + _resultArg;
+            EmitDebugInfo(il, 0, true);
+            Statements.Compile(il);
+            EmitDebugInfo(il, 1, true);
+            il.Emit(OpCodes.Ret);
+            SymbolTable.Clear();
+        }
+
+        /// <summary>
+        /// Compiles the signature for the procedure but not the body.
+        /// This needs to be done first so that other methods can 
+        /// call this method, this way we don't have problems with;
+        /// dependencies between methods.
+        /// </summary>
+        public MethodBuilder CompileSignature(ModuleBuilder module) {
+            int argCount = ValueArguments.ChildNodes.Count;
+            if (HasResultArgument) {
+                argCount++;
             }
+            Type[] argTypes = new Type[argCount];
+
+            for (int i = 0; i < argTypes.Length; i++) {
+                argTypes[i] = typeof(int);
             }
-        } else if (_resultArg) {
-            s += "res " + _resultArg;
+            if (HasResultArgument) {
+                argTypes[argTypes.Length - 1] = typeof(int).MakeByRefType();
             }
-        s += ")\n"
-        s += "\t" + _stmts.ToString().Replace("\n", "\n\t")
-        s += "\nend;"
-        return s;
+
+            MethodBuilder method = module.DefineGlobalMethod(_name, MethodAttributes.HideBySig | MethodAttributes.Static | MethodAttributes.Public, typeof(void), argTypes);
+            int pos = 1;
+            foreach (Variable arg in ValueArguments) {
+                SymbolTable.DefineArgument(arg.Name);
+                method.DefineParameter(pos, ParameterAttributes.In, arg.Name);
+                pos++;
+            }
+
+            if (HasResultArgument) {
+                SymbolTable.DefineArgument(ResultArgument.Name);
+                method.DefineParameter(pos, ParameterAttributes.Out, ResultArgument.Name);
+            }
+            SymbolTable.Clear();
+            return method;
+        }
+
+        public override string ToString() {
+            string s = "procedure " + _name + "(";
+            if (ValueArguments.ChildNodes.Count > 0) {
+                s += "val ";
+                s += ValueArguments[0];
+                for (int i = 1; i < ValueArguments.ChildNodes.Count; i++) {
+                    s += ", " + ValueArguments[i];
+                }
+                if (HasResultArgument) {
+                    s += ", res " + ResultArgument;
+                }
+            } else if (HasResultArgument) {
+                s += "res " + ResultArgument;
+            }
+            s += ")\n";
+            s += "\t" + Statements.ToString().Replace("\n", "\n\t");
+            s += "\nend;";
+            return s;
+        }
+    }
+}
