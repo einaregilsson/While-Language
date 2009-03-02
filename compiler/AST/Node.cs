@@ -89,9 +89,10 @@ namespace While.AST {
         protected void AddChild(Node child) {
             _children.Add(child);
         }
-        //public void AddSequencePoint(Token t) {
-        //    _sequencePoints.Add(new SequencePoint(t.line, t.col, t.line, t.col + t.val.Length));
-        //}
+        
+        public void AddSequencePoint(Token t) {
+            _sequencePoints.Add(new SequencePoint(t.line, t.col, t.line, t.col + t.val.Length));
+        }
 
         public void AddSequencePoint(int startLine, int startCol, int endLine, int endCol) {
             _sequencePoints.Add(new SequencePoint(startLine, startCol, endLine, endCol));

@@ -43,6 +43,14 @@
     <Compile Include="AST\Sequences.cs" />
     <Compile Include="AST\WhileProgram.cs" />
     <Compile Include="AST\Statements.cs" />
+    <Compile Include="Parsing\Parser.cs" />
+    <Compile Include="Parsing\Parser.Generated.cs">
+      <DependentUpon>Parser.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Parsing\Scanner.cs" />
+    <Compile Include="Parsing\Scanner.Generated.cs">
+      <DependentUpon>Scanner.cs</DependentUpon>
+    </Compile>
     <Compile Include="SymbolTable.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -52,6 +60,9 @@
     <Compile Include="WhileException.cs">
       <SubType>Code</SubType>
     </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Parsing\While.atg" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />

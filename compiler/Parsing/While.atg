@@ -17,52 +17,19 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *  
- * $HeadURL: https://while-language.googlecode.com/svn/branches/Boo/While.ATG $
- * $LastChangedDate: 2009-02-25 15:21:32 +0100 (mið., 25 feb. 2009) $
- * $Author: einar@einaregilsson.com $
- * $Revision: 2 $
+ * $HeadURL$
+ * $LastChangedDate$
+ * $Author$
+ * $Revision$
  */
+using While.AST;
+using While.AST.Expressions;
+using While.AST.Sequences;
+using While.AST.Statements;
+
 COMPILER Program
 	
 
-def ExpectBool(exp as Expression, t as Token, isRightHandSide as bool):
-	if not exp isa BoolExpression:
-		if isRightHandSide:
-			errors.SemErr(t.line, t.col, "'${t.val}' expects a boolean expression on its right side")
-		else:
-			errors.SemErr(t.line, t.col, "'${t.val}' expects a boolean expression on its left side")
-		return false
-	return true
-		
-def ExpectInt(exp as Expression, t as Token, isRightHandSide as bool):
-	if not exp isa IntExpression:
-		if isRightHandSide:
-			errors.SemErr(t.line, t.col, "'${t.val}' expects a integer expression on its right side")
-		else:
-			errors.SemErr(t.line, t.col, "'${t.val}' expects a integer expression on its left side")
-		return false
-	return true
-
-def ExpectIntArg(exp as Expression, t as Token):
-	if not exp isa IntExpression:
-		errors.SemErr(t.line, t.col, "Arguments to procedures can only be integer expressions")
-
-def ToStmtSeq(s as Statement) as StatementSequence:
-	if s isa StatementSequence:
-		return cast(StatementSequence,s)
-	else:
-		return StatementSequence((s,))
-
-
-def IsStartOfResultArg() as bool:
-	t as Token = scanner.Peek()
-	scanner.ResetPeek()
-	return t.val == "res"
-
-def IsProcProgram() as bool:
-	t as Token = scanner.Peek()
-	scanner.ResetPeek()
-	return t.val == "proc"
 
 CHARACTERS
   letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_".
@@ -84,117 +51,130 @@ IGNORE cr + lf + tab
 PRODUCTIONS
 
 Program<>
-=                                          				(.	statements as StatementSequence
-															procs = Dictionary[of string, Procedure]() .)
+=                                          				(.	StatementSequence statements;
+															ProcedureSequence procs = new ProcedureSequence(); 
+															Token startTok, endTok; .)
 
    	(
     IF(IsProcProgram())
-    	"begin"											 (.	startTok = t .)
+    	"begin"											 (.	startTok = t; .)
     	Proc<procs>
     	{
     		Proc<procs>
     	}
 
     	StmtSeq<statements>
-    	"end"											(.	endTok = t .)
+    	"end"											(.	endTok = t; .)
     |
     	StmtSeq<statements>
     )
     
-    													(.	WhileTree.Instance = WhileTree(statements, procs)
-															if startTok and endTok:
-																WhileTree.Instance.AddSequencePoint(startTok)
-																WhileTree.Instance.AddSequencePoint(endTok)
+    													(.	WhileProgram.Instance = new WhileProgram(statements, procs);
+															if (startTok != null && endTok != null) {
+																WhileProgram.Instance.AddSequencePoint(startTok);
+																WhileProgram.Instance.AddSequencePoint(endTok);
+															}
 														.)
 .
 
-Proc<procs as Dictionary[of string, Procedure]>
-=														(.	statements as StatementSequence
-															name as string 
-															valArgs = List[of Variable]()
-															resultArg as Variable .)
-	"proc"												(.	ptok = t .)
-	ident												(.	name = t.val .)
+Proc<ProcedureSequence procs>
+=														(.	StatementSequence statements;
+															string name;
+															List<Variable> valArgs = new List<Variable>();
+															Variable resultArg; .)
+	"proc"												(.	Token ptok = t; .)
+	ident												(.	name = t.val; .)
 	"("
 	[
 		(
 			"val"
-			ident										(.	valArgs.Add(Variable(t.val,IsValueArg:true))
-															VariableStack.DefineArgument(t.val) .)
+			ident										(.	Variable v = new Variable(t.val);
+															v.IsValueArg = true;
+															valArgs.Add(v);
+															SymbolTable.DefineArgument(t.val) .)
 			[Args<valArgs, resultArg>]
 		|
 			"res"
-			ident										(.	resultArg = Variable(t.val,IsResultArg:true)
-															VariableStack.DefineResultArgument(t.val).)
+			ident										(.	Variable resultArg = new Variable(t.val);
+															resultArg.IsResultArg = true;
+															SymbolTable.DefineResultArgument(t.val); .)
 		)
 	]
-	")"													(.	seq1 = (ptok.line,ptok.col, t.line,t.col+t.val.Length) .)
+	")"													(.	SequencePoint seq1 = new SequencePoint(ptok.line,ptok.col, t.line,t.col+t.val.Length); .)
 	"is"
 	StmtSeq<statements>
-	"end"												(.	seq2 = t .)
-	";"													(.	if procs.ContainsKey(name):
-																errors.SemErr(ptok.line, ptok.col, "Procedure '${name}' is already declared")
-															else:
-																proc = Procedure(name, valArgs, resultArg, statements)
-																proc.AddSequencePoint(seq1)
-																proc.AddSequencePoint(seq2)
-																procs.Add(name, proc)
-															VariableStack.Clear()
+	"end"												(.	seq2 = new SequencePoint(t.line, t.col, t.line, t.col+t.val.Length); .)
+	";"													(.	if (procs.ContainsProcedure(name)) {
+																errors.SemErr(ptok.line, ptok.col, "Procedure '" + name + "' is already declared");
+															} else {
+																proc = Procedure(name, valArgs, resultArg, statements);
+																proc.AddSequencePoint(seq1);
+																proc.AddSequencePoint(seq2);
+																procs.Add(name, proc);
+															}
+															SymbolTable.Clear();
 														.)
 .
 
-Args<valArgs as List[of Variable], ref resultArg as Variable> 
+Args<VariableSequence vars, ref Variable resultArg> 
 =
 	(
 	IF(IsStartOfResultArg()) 
 	","
 	"res" 
-	ident									(.	resultArg = Variable(t.val,IsResultArg:true)
-												if VariableStack.IsDeclaredInCurrentScope(t.val):
-													errors.SemErr(t.line, t.col, "Argument '${t.val}' is already declared in this scope")
-												else:
-													VariableStack.DefineResultArgument(t.val)
+	ident									(.	resultArg = new Variable(t.val);
+												resultArg.IsResultArg = true;
+												if (SymbolTable.IsDeclaredInCurrentScope(t.val)) {
+													errors.SemErr(t.line, t.col, string.Format("Argument '{0}' is already declared in this scope",t.val));
+												} else {
+													SymbolTable.DefineResultArgument(t.val);
+												}
 											.)
 	|
 	","
-	ident									(.	valArgs.Add(Variable(t.val,IsValueArg:true)) 
-												if VariableStack.IsDeclaredInCurrentScope(t.val):
-													errors.SemErr(t.line, t.col, "Argument '${t.val}' is already declared in this scope")
-												else:
-													VariableStack.DefineArgument(t.val)
+	ident									(.	Variable v = new Variable(t.val);
+												v.IsValueArg = true;
+												valArgs.AddVariable(v);
+												if (SymbolTable.IsDeclaredInCurrentScope(t.val)) {
+													errors.SemErr(t.line, t.col, string.Format("Argument '${0}' is already declared in this scope",t.val));
+												} else {
+													SymbolTable.DefineArgument(t.val);
+												}
 											.)
 	[Args<valArgs, resultArg>] 
 	)
 .
 
-StmtSeq<ref statements as StatementSequence>  
-=													(. 	stmt as Statement 
-														slist = List[of Statement]().)
-    Stmt<stmt>                         				(. slist.Add(stmt) .)
+StmtSeq<ref StatementSequence statements>
+=													(. 	Statement stmt;
+														statements = new StatementSequence();
+													.)
+    Stmt<stmt>                         				(. statements.AddStatement(stmt); .)
     {
-        ';' Stmt<stmt>                 				(. slist.Add(stmt) .)
-    }                                      			(. statements = StatementSequence(slist) .)
+        ';' Stmt<stmt>                 				(. statements.AddStatement(stmt); .)
+    }
 .
 
-Stmt<ref stmt as Statement>                   
-=													(. 	exp as Expression 
-														sl,sc = la.line, la.col
-														stmtSeq as StatementSequence.)
+Stmt<ref Statement stmt>
+=													(. 	Expression exp;
+														int sl = la.line, sc = la.col;
+														StatementSequence stmtSeq; 
+														Token bf; .)
 
-	( AssignStmt<stmt>								(. stmt.AddSequencePoint((sl,sc, t.line,t.col+t.val.Length)) .)
-	| "skip"                               			(. stmt = Skip();stmt.AddSequencePoint(t) .)
+	( AssignStmt<stmt>								(. stmt.AddSequencePoint((sl,sc, t.line,t.col+t.val.Length)); .)
+	| "skip"                               			(. stmt = new Skip();stmt.AddSequencePoint(t); .)
 	| BlockStmt<stmt>                       
 	| IfStmt<stmt>
 	| WhileStmt<stmt>
-	| ReadStmt<stmt>								(. 	stmt.AddSequencePoint((sl,sc, t.line,t.col+t.val.Length)).)
-	| "write" Expr<exp>                				(. 	stmt = Write(exp); stmt.AddSequencePoint((sl,sc, t.line,t.col+t.val.Length)) .)
-	| CallProc<stmt>								(. 	stmt.AddSequencePoint((sl,sc, t.line,t.col+t.val.Length)) .)
+	| ReadStmt<stmt>								(. 	stmt.AddSequencePoint((sl,sc, t.line,t.col+t.val.Length));.)
+	| "write" Expr<exp>                				(. 	stmt = new Write(exp); stmt.AddSequencePoint((sl,sc, t.line,t.col+t.val.Length)); .)
+	| CallProc<stmt>								(. 	stmt.AddSequencePoint((sl,sc, t.line,t.col+t.val.Length)); .)
 	| 
-		'(' 										(.	bf = t .)
+		'(' 										(.	bf = t; .)
 		StmtSeq<stmtSeq> 
-		')'											(.	stmt = stmtSeq
-														stmt.AddSequencePoint(bf)
-														stmt.AddSequencePoint(t) .)
+		')'											(.	stmt = stmtSeq;
+														stmt.AddSequencePoint(bf);
+														stmt.AddSequencePoint(t); .)
 		
 	)
 .
@@ -203,62 +183,77 @@ ReadStmt<ref stmt as Statement>
 =
 	"read" 
 	(
-		ident                         				(. 	stmt = Read(Variable(t.val)) .)
+		ident                         				(. 	stmt = new Read(Variable(t.val)); .)
 		|
 		'(' 
-		ident										(. 	stmt = Read(Variable(t.val)) .)
+		ident										(. 	stmt = new Read(Variable(t.val)); .)
 		')'
 	)
 .
 
-VarDecStmt<ref vars as VariableDeclarationSequence>
-=													(. list = List[of VariableDeclaration]() .)
-	VarDec<list>
+VarDecStmt<ref VariableDeclarationSequence vars>
+=													(. vars = new VariableDeclarationSequence(); .)
+	VarDec<vars>
 	{
-	    VarDec<list>
-	}												(. vars = VariableDeclarationSequence(list) .)
+	    VarDec<vars>
+	}
 .
 
-VarDec<list as List[of VariableDeclaration]>
+VarDec<VariableDeclarationSequence vars>
 =
-	"var" 											(. sl,sc,el,ec = t.line,t.col,la.line,la.col+la.val.Length .)
-	ident                             				(. 	if VariableStack.IsDeclaredInCurrentScope(t.val):
-															errors.SemErr(t.line, t.col, "Variable '${t.val}' is already declared in this scope") 
-														elif VariableStack.IsInScope(t.val):
-															errors.Warning(t.line, t.col, "Variable '${t.val}' hides variable with same name in outer block")
-															VariableStack.DefineVariable(t.val)
-														else:
-															VariableStack.DefineVariable(t.val) 
-														vd = VariableDeclaration(Variable(t.val))
-														vd.AddSequencePoint((sl,sc,el,ec))
-														list.Add(vd) .)
+	"var" 											(. 
+														int sl = t.line; 
+														int sc = t.col;
+														int el = la.line;
+														int ec = la.col+la.val.Length; .)
+	ident                             				(. 	if (SymbolTable.IsDeclaredInCurrentScope(t.val)) {
+															errors.SemErr(t.line, t.col, string.Format("Variable '{0}' is already declared in this scope", t.val));
+														} else if (SymbolTable.IsInScope(t.val)) {
+															errors.Warning(t.line, t.col, string.Format("Variable '{0}' hides variable with same name in outer block",t.val));
+															SymbolTable.DefineVariable(t.val);
+														} else {
+															SymbolTable.DefineVariable(t.val);
+														}
+														vd = VariableDeclaration(Variable(t.val));
+														vd.AddSequencePoint((sl,sc,el,ec));
+														vars.AddVariableDeclaration(vd); .)
 	';'
 .
 
 BlockStmt<ref block as Statement>                 
 =
-	"begin"                                 		(.	if CompileOptions.BookVersion:
-															errors.SemErr(t.line, t.col, "Variable declarations are only allowed when using the /coursesyntax switch. Type 'wc.exe /help' for more information")
-															System.Environment.Exit(1)
-														vars as VariableDeclarationSequence
-														VariableStack.PushScope()
-														sl,sc,el,ec = t.line,t.col,t.line,t.col+t.val.Length .)
-	[ VarDecStmt<vars> ]							(. statements as StatementSequence .)
+	"begin"                                 		(.	if (CompileOptions.BookVersion) {
+															errors.SemErr(t.line, t.col, "Variable declarations are only allowed when using the /coursesyntax switch. Type 'wc.exe /help' for more information")M
+															System.Environment.Exit(1);
+														}
+														VariableDeclarationSequence vars = new VariableDeclarationSequence();
+														SymbolTable.PushScope();
+														int sl = t.line;
+														int sc = t.col;
+														int el = t.line;
+														int ec = t.col+t.val.Length;
+														.)
+	[ VarDecStmt<vars> ]							(. StatementSequence statements; .)
 	StmtSeq<statements>                
-	"end"                       					(. 	block = Block(vars, statements) 
-														block.AddSequencePoint((sl,sc,el,ec))
-														block.AddSequencePoint(t)
-														VariableStack.PopScope() .)
+	"end"                       					(. 	Block block = new Block(vars, statements);
+														block.AddSequencePoint((sl,sc,el,ec));
+														block.AddSequencePoint(t);
+														SymbolTable.PopScope(); .)
 .
 
-AssignStmt<ref assign as Statement>            		(. 	exp as Expression 
-														var as Variable .)
-=	ident                                  			(. 	var = Variable(t.val) 
-														if not VariableStack.IsInScope(t.val) and not CompileOptions.BookVersion:
-																errors.SemErr(t.line, t.col, "Assignment to undeclared variable '${t.val}'") .)
-	":="											(. tok = t .)
-	Expr<exp>                          				(. return unless ExpectInt(exp, tok, true) .)
-													(. assign = Assign(var, exp) .)
+AssignStmt<ref Statement assign>            		(. 	Expression exp;
+														Variable var; .)
+=	ident                                  			(. 	var = new Variable(t.val);
+														if (!SymbolTable.IsInScope(t.val) and not CompileOptions.BookVersion) {
+															errors.SemErr(t.line, t.col, string.Format("Assignment to undeclared variable '{0}'",t.val));
+														}
+													.)
+	":="											(. Token tok = t .)
+	Expr<exp>                          				(.	if (!ExpectInt(exp, tok, true)) {
+															return;
+														} 
+													.)
+													(. assign = new Assign(var, exp); .)
 .
 
 IfStmt<ref ifStmt as Statement>           			(. 	ifBranch as StatementSequence; 
@@ -508,7 +503,7 @@ UnaryOperator<ref exp as Expression>          	(.	op as string = null .)
 Terminal<ref exp as Expression>               
 =
 	( ident                                		(. 	exp = Variable(t.val) 
-													if not VariableStack.IsInScope(t.val) and not CompileOptions.BookVersion:
+													if not SymbolTable.IsInScope(t.val) and not CompileOptions.BookVersion:
 														errors.SemErr(t.line, t.col, "Undeclared variable '${t.val}'") .)
 	| number                               		(. exp = Number(int.Parse(t.val)) .)
 	| "true"                               		(. exp = Bool(true) .)
