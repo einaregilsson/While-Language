@@ -1,5 +1,5 @@
-REM Build script for the While compiler, see http://while-language.googlecode.com
 @echo off
+REM Build script for the While compiler, see http://while-language.googlecode.com
 set depends=call make
 set all=compiler, plugins
 set CC=%WINDIR%\Microsoft.NET\Framework\v2.0.50727\csc.exe 
