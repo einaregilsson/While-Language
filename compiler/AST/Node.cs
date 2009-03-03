@@ -67,10 +67,16 @@ namespace While.AST {
         protected static ISymbolDocumentWriter _debugWriter;
         protected List<SequencePoint> _sequencePoints = new List<SequencePoint>();
         protected static ModuleBuilder _module;
-
+        [ThreadStatic] protected static CommandLineOptions _options;
+        
         public static ISymbolDocumentWriter DebugWriter {
             get { return _debugWriter; }
             set { _debugWriter = value; }
+        }
+
+        public static CommandLineOptions Options{
+            get { return _options; }
+            set { _options = value; }
         }
 
         public static ModuleBuilder Module {
@@ -104,7 +110,7 @@ namespace While.AST {
         }
 
         public void EmitDebugInfo(ILGenerator il, int index, bool addNOP) {
-            if (CompileOptions.Debug) {
+            if (Options.Debug) {
                 SequencePoint seq = _sequencePoints[index];
                 MarkSequencePoint(il, _sequencePoints[index]);
                 if (addNOP) {

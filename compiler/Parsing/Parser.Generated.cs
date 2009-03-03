@@ -212,7 +212,7 @@ public partial class Parser {
 		assign = null; 
 		Expect(1);
 		var = new Variable(t.val);
-		if (!SymbolTable.IsInScope(t.val) && !CompileOptions.BookVersion) {
+		if (!SymbolTable.IsInScope(t.val) && !Options.BookVersion) {
 			errors.SemErr(t.line, t.col, string.Format("Assignment to undeclared variable '{0}'",t.val));
 		}
 		
@@ -228,9 +228,9 @@ public partial class Parser {
 
 	void BlockStmt(out Statement block) {
 		Expect(3);
-		if (CompileOptions.BookVersion) {
+		if (Options.BookVersion) {
 		errors.SemErr(t.line, t.col, "Variable declarations are only allowed when using the /coursesyntax switch. Type 'wc.exe /help' for more information");
-		System.Environment.Exit(1);
+		While.Environment.Exit(1);
 		}
 		VariableDeclarationSequence vars = new VariableDeclarationSequence();
 		SymbolTable.PushScope();
@@ -266,7 +266,7 @@ public partial class Parser {
 		                         } 
 		Expect(19);
 		int el = t.line; int ec = t.col+t.val.Length; 
-		if (CompileOptions.BookVersion) {
+		if (Options.BookVersion) {
 			Stmt(out tmpStmt);
 			ifBranch = ToStatementSequence(tmpStmt); 
 			if (la.kind == 20) {
@@ -304,7 +304,7 @@ public partial class Parser {
 		if (!ExpectBool(exp, tok, true)) { return; } 
 		Expect(23);
 		int el = t.line; int ec = t.col+t.val.Length; 
-		if (CompileOptions.BookVersion) {
+		if (Options.BookVersion) {
 			Stmt(out branchStmt);
 			whileBranch = ToStatementSequence(branchStmt); 
 		} else if (StartOf(1)) {
@@ -530,9 +530,9 @@ public partial class Parser {
 			PlusMinus(out second);
 			if (!ExpectInt(exp, tok, false)) { return; } 
 			if (!ExpectInt(second, tok, true)) { return; } 
-			if (t.val == "<<") {
+			if (tok.val == "<<") {
 			    exp = new ShiftLeft((TypedExpression<int>)exp, (TypedExpression<int>)second);
-			} else if (t.val == ">>") {
+			} else if (tok.val == ">>") {
 			    exp = new ShiftRight((TypedExpression<int>)exp, (TypedExpression<int>)second);
 			}
 			
@@ -552,9 +552,9 @@ public partial class Parser {
 			MulDivMod(out second);
 			if (!ExpectInt(exp, tok, false)) { return; } 
 			if (!ExpectInt(second, tok, true)) { return; } 
-			if (t.val == "+") {
+			if (tok.val == "+") {
 			    exp = new Plus((TypedExpression<int>)exp, (TypedExpression<int>)second);
-			} else if (t.val == "-") {
+			} else if (tok.val == "-") {
 			    exp = new Minus((TypedExpression<int>)exp, (TypedExpression<int>)second);
 			}
 			 
@@ -576,11 +576,11 @@ public partial class Parser {
 			UnaryOperator(out second);
 			if (!ExpectInt(exp, tok, false)) { return; } 
 			if (!ExpectInt(second, tok, true)) { return; } 
-			if (t.val == "*") {
+			if (tok.val == "*") {
 			    exp = new Multiplication((TypedExpression<int>)exp, (TypedExpression<int>)second);
-			} else if (t.val == "/") {
+			} else if (tok.val == "/") {
 			    exp = new Division((TypedExpression<int>)exp, (TypedExpression<int>)second);
-			} else if (t.val == "%") {
+			} else if (tok.val == "%") {
 			    exp = new Modulo((TypedExpression<int>)exp, (TypedExpression<int>)second);
 			}
 			
@@ -592,8 +592,10 @@ public partial class Parser {
 		if (la.kind == 41 || la.kind == 45 || la.kind == 46) {
 			if (la.kind == 41) {
 				Get();
+				tok = t; op = t.val; 
 			} else if (la.kind == 45) {
 				Get();
+				tok = t; op = t.val; 
 			} else {
 				Get();
 				tok = t; op = t.val; 
@@ -618,7 +620,7 @@ public partial class Parser {
 		if (la.kind == 1) {
 			Get();
 			exp = new Variable(t.val);
-			if (!SymbolTable.IsInScope(t.val) && !CompileOptions.BookVersion) {
+			if (!SymbolTable.IsInScope(t.val) && !Options.BookVersion) {
 				errors.SemErr(t.line, t.col, string.Format("Undeclared variable '{0}'", t.val)); 
 			}
 			

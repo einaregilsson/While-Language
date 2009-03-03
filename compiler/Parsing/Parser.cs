@@ -44,12 +44,18 @@ namespace While.Parsing {
         public Token t;    // last recognized token
         public Token la;   // lookahead token
         int errDist = minErrDist;
+        private CommandLineOptions _options;
 
-        public Parser(Scanner scanner) {
+        public Parser(Scanner scanner, CommandLineOptions options) {
             this.scanner = scanner;
             errors = new Errors();
+            _options = options;
+            Node.Options = options;
         }
 
+        public CommandLineOptions Options {
+            get { return _options; }
+        }
         void SynErr(int n) {
             if (errDist >= minErrDist) errors.SynErr(la.line, la.col, n);
             errDist = 0;

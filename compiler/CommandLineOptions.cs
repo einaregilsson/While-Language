@@ -30,34 +30,34 @@ namespace While {
 
     /// <summary>
     /// Class for parsing command line options.
-    /// The options are static available properties;
-    /// so essentially they are global variables that;
-    /// anything in the assembly can access.
     /// </summary>
-    public static class CompileOptions {
+    public class CommandLineOptions {
 
-        private static bool _debug = false;
-        public static bool Debug { get { return _debug; } }
+        private bool _debug = false;
+        public bool Debug { get { return _debug; } }
 
-        private static string _outputFile = "";
-        public static string OutputFilename { get { return _outputFile; } }
+        private string _outputFile = "";
+        public string OutputFilename { get { return _outputFile; } }
 
-        private static string _inputFile = "";
-        public static string InputFilename { get { return _inputFile; } }
+        private string _inputFile = "";
+        public string InputFilename { get { return _inputFile; } }
 
-        private static bool _readStdIn = false;
-        public static bool ReadStdIn { get { return _readStdIn; } }
+        private bool _readStdIn = false;
+        public bool ReadStdIn { get { return _readStdIn; } }
 
-        private static bool _empty = false;
-        public static bool Empty { get { return _empty; } }
+        private bool _empty = false;
+        public bool Empty { get { return _empty; } }
 
-        private static bool _help = false;
-        public static bool Help { get { return _help; } }
+        private bool _help = false;
+        public bool Help { get { return _help; } }
 
-        private static bool _bookVersion = true;
-        public static bool BookVersion { get { return _bookVersion; } }
+        private bool _bookVersion = true;
+        public bool BookVersion {
+            get { return _bookVersion; }
+            set { _bookVersion = value; }
+        }
 
-        public static void Init(string[] args) {
+        public CommandLineOptions(string[] args) {
             if (args.Length == 0) {
                 _empty = true;
                 return;
@@ -84,7 +84,7 @@ namespace While {
                 _readStdIn = true;
                 if (!gotOut) {
                     Console.Error.WriteLine("ERROR: /out:<filename> must be specified when reading source from the standard input stream (STDIN).");
-                    Environment.Exit(4);
+                    While.Environment.Exit(4);
                 }
             }
 

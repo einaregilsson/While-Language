@@ -114,11 +114,11 @@ namespace While.AST.Expressions {
         public override void Compile(ILGenerator il) {
             OpCode code = OpCodes.Ldloc;
 
-            if (CompileOptions.BookVersion && !SymbolTable.IsInScope(_name)) {
+            if (Options.BookVersion && !SymbolTable.IsInScope(_name)) {
                 //Declare at first use
                 SymbolTable.DefineVariable(_name);
                 LocalBuilder lb = il.DeclareLocal(typeof(int));
-                if (CompileOptions.Debug) {
+                if (Options.Debug) {
                     lb.SetLocalSymInfo(_name);
                 }
             }
@@ -142,10 +142,11 @@ namespace While.AST.Expressions {
             AddChild(left);
             AddChild(right);
             _opCode = opCode;
+            _opString = opString;
         }
 
         public override string ToString() {
-            return Left.ToString() + " " + _opString + " " + Right.ToString();
+            return String.Format("({0} {1} {2})", Left, _opString, Right);
         }
 
         public override void Compile(ILGenerator il) {

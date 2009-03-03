@@ -1,26 +1,26 @@
 /*
- * While Compiler;
+ * While Compiler
  * http://code.google.com/p/while-language/
  *
  * Copyright (C) 2009 Einar Egilsson [einar@einaregilsson.com]
  *
- * This program is free software: you can redistribute it and/or modify;
- * it under the terms of the GNU General Public published License by;
- * the Free Software Foundation, either version 2 of the License, or;
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of;
- * MERCHANTABILITY || FITNESS FOR A PARTICULAR PURPOSE.  See the;
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License;
- * along with this program.  if (not, see <http) {//www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *  
- * $HeadURL: https://while-language.googlecode.com/svn/branches/Boo/AST/WhileTree.boo $
- * $LastChangedDate: 2009-02-25 15:21:32 +0100 (mið., 25 feb. 2009) $
- * $Author: einar@einaregilsson.com $
- * $Revision: 2 $
+ * $HeadURL$
+ * $LastChangedDate$
+ * $Author$
+ * $Revision$
  */
 using While;
 using While.AST.Statements;
@@ -73,17 +73,17 @@ namespace While.AST {
         public void Compile(string filename) {
             AssemblyName name = new AssemblyName(filename);
             AssemblyBuilder assembly = Thread.GetDomain().DefineDynamicAssembly(name, AssemblyBuilderAccess.RunAndSave);
-            Node.Module = assembly.DefineDynamicModule(filename, CompileOptions.Debug);
+            Node.Module = assembly.DefineDynamicModule(filename, Options.Debug);
             MethodBuilder mainMethod = Module.DefineGlobalMethod("Main", MethodAttributes.HideBySig | MethodAttributes.Static | MethodAttributes.Public, typeof(void), new Type[] { });
 
-            if (CompileOptions.Debug) {
-                Node.DebugWriter = Module.DefineDocument(CompileOptions.InputFilename, Guid.Empty, Guid.Empty, SymDocumentType.Text);
+            if (Options.Debug) {
+                Node.DebugWriter = Module.DefineDocument(Options.InputFilename, Guid.Empty, Guid.Empty, SymDocumentType.Text);
             }
 
             Procedures.Compile(null);
 
             ILGenerator il = mainMethod.GetILGenerator();
-            if (CompileOptions.BookVersion) {
+            if (Options.BookVersion) {
                 SymbolTable.PushScope();
             }
 
@@ -100,7 +100,7 @@ namespace While.AST {
 
             Module.CreateGlobalFunctions();
             assembly.SetEntryPoint(mainMethod, PEFileKinds.ConsoleApplication);
-            if (CompileOptions.Debug) {
+            if (Options.Debug) {
                 Module.SetUserEntryPoint(mainMethod);
             }
             assembly.Save(filename);

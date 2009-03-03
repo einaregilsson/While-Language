@@ -61,7 +61,7 @@ namespace While.AST.Statements {
             EmitDebugInfo(il, 0, true);
             SymbolTable.DefineVariable(Variable.Name);
             LocalBuilder lb = il.DeclareLocal(typeof(int));
-            if (CompileOptions.Debug) {
+            if (Options.Debug) {
                 lb.SetLocalSymInfo(Variable.Name);
             }
         }
@@ -96,10 +96,10 @@ namespace While.AST.Statements {
             EmitDebugInfo(il, 0, false);
 
             //Declare at first use
-            if (CompileOptions.BookVersion && !SymbolTable.IsInScope(Variable.Name)) {
+            if (Options.BookVersion && !SymbolTable.IsInScope(Variable.Name)) {
                 SymbolTable.DefineVariable(Variable.Name);
                 LocalBuilder lb = il.DeclareLocal(typeof(int));
-                if (CompileOptions.Debug) {
+                if (Options.Debug) {
                     lb.SetLocalSymInfo(Variable.Name);
                 }
             }
@@ -164,18 +164,18 @@ namespace While.AST.Statements {
 
             if (!WhileProgram.Instance.Procedures.ContainsProcedure(ProcedureName)) {
                 System.Console.Error.WriteLine(string.Format("({0},{1}) ERROR: Procedure '{2}' is not defined", l, c, ProcedureName));
-                System.Environment.Exit(1);
+                global::While.Environment.Exit(1);
             }
 
             Procedure proc = WhileProgram.Instance.Procedures.GetByName(ProcedureName);
             if (this.Expressions.Count != proc.ArgumentCount) {
                 System.Console.Error.WriteLine(string.Format("({0},{1}) ERROR: Procedure '{2}' does not take {3} arguments", l, c, ProcedureName, Expressions.Count));
-                System.Environment.Exit(1);
+                global::While.Environment.Exit(1);
             }
 
             if (proc.HasResultArgument && !(Expressions[Expressions.Count - 1] is Variable)) {
                 System.Console.Error.WriteLine(string.Format("({0},{1}) ERROR: Only variables are allowed for result arguments", _lastArgToken.line, _lastArgToken.col));
-                System.Environment.Exit(1);
+                global::While.Environment.Exit(1);
             }
         }
 
@@ -190,10 +190,10 @@ namespace While.AST.Statements {
                 if (proc.HasResultArgument) {
                     Variable v = (Variable)this[ChildNodes.Count - 1];
                     //Create at first use
-                    if (CompileOptions.BookVersion && !SymbolTable.IsInScope(v.Name)) {
+                    if (Options.BookVersion && !SymbolTable.IsInScope(v.Name)) {
                         SymbolTable.DefineVariable(v.Name);
                         LocalBuilder lb = il.DeclareLocal(typeof(int));
-                        if (CompileOptions.Debug) {
+                        if (Options.Debug) {
                             lb.SetLocalSymInfo(v.Name);
                         }
                     }
@@ -273,10 +273,10 @@ namespace While.AST.Statements {
             il.Emit(OpCodes.Call, typeof(System.Console).GetMethod("Write", new Type[] { typeof(string) }));
             il.Emit(OpCodes.Call, typeof(System.Console).GetMethod("ReadLine"));
 
-            if (CompileOptions.BookVersion && !SymbolTable.IsInScope(Variable.Name)) {
+            if (Options.BookVersion && !SymbolTable.IsInScope(Variable.Name)) {
                 SymbolTable.DefineVariable(Variable.Name);
                 LocalBuilder lb = il.DeclareLocal(typeof(int));
-                if (CompileOptions.Debug) {
+                if (Options.Debug) {
                     lb.SetLocalSymInfo(Variable.Name);
                 }
             }
@@ -323,7 +323,7 @@ namespace While.AST.Statements {
             SymbolTable.PushScope();
             il.BeginScope();
             EmitDebugInfo(il, 0, true);
-            if (CompileOptions.Debug) {
+            if (Options.Debug) {
                 il.Emit(OpCodes.Nop); //To step correctly
             }
             if (Variables != null) {
