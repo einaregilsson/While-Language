@@ -66,7 +66,7 @@ end
         }
 
         private void Compile(string src, string expected) {
-            string result = Parse(src);
+            Parse(src);
             WhileProgram.Instance.Compile("test.exe");
             Process pr = new Process();
             pr.StartInfo.UseShellExecute = false;

@@ -49,7 +49,7 @@ namespace While.AST {
         public int StartLine { get { return _startLine; } }
         public int StartCol { get { return _startCol; } }
         public int EndLine { get { return _endLine; } }
-        public int EndCol { get { return _endLine; } }
+        public int EndCol { get { return _endCol; } }
     }
 
     /// <summary>
@@ -111,7 +111,6 @@ namespace While.AST {
 
         public void EmitDebugInfo(ILGenerator il, int index, bool addNOP) {
             if (Options.Debug) {
-                SequencePoint seq = _sequencePoints[index];
                 MarkSequencePoint(il, _sequencePoints[index]);
                 if (addNOP) {
                     il.Emit(OpCodes.Nop);

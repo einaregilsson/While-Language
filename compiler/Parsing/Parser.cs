@@ -74,27 +74,6 @@ namespace While.Parsing {
             return set[s, la.kind];
         }
 
-        void ExpectWeak(int n, int follow) {
-            if (la.kind == n) Get();
-            else {
-                SynErr(n);
-                while (!StartOf(follow)) Get();
-            }
-        }
-
-
-        bool WeakSeparator(int n, int syFol, int repFol) {
-            int kind = la.kind;
-            if (kind == n) { Get(); return true; } else if (StartOf(repFol)) { return false; } else {
-                SynErr(n);
-                while (!(set[syFol, kind] || set[repFol, kind] || set[0, kind])) {
-                    Get();
-                    kind = la.kind;
-                }
-                return StartOf(syFol);
-            }
-        }
-
         private bool ExpectBool(Expression exp, Token t, bool isRightHandSide) {
 	        if (!(exp is TypedExpression<bool>)) {
 			    errors.SemErr(t.line, t.col, string.Format("'{0}' expects a boolean expression on its {1} side", t.val, isRightHandSide ? "right" : "left"));
