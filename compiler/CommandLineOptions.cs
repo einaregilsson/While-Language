@@ -56,7 +56,6 @@ namespace While {
             get { return _bookVersion; }
             set { _bookVersion = value; }
         }
-
         public CommandLineOptions(string[] args) {
             if (args.Length == 0) {
                 _empty = true;
