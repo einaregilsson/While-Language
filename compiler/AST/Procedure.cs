@@ -72,8 +72,8 @@ namespace While.AST {
             get { return ResultArgument != null; }
         }
 
-        public Procedure(string name, List<Variable> valArgs, Variable resultArg, StatementSequence statements) {
-            AddChild(new VariableSequence(valArgs));
+        public Procedure(string name, VariableSequence valArgs, Variable resultArg, StatementSequence statements) {
+            AddChild(valArgs);
             AddChild(resultArg);
             AddChild(statements);
             _name = name;

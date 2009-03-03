@@ -55,6 +55,7 @@ namespace While.AST {
         private static WhileProgram _tree;
         public static WhileProgram Instance {
             get { return _tree; }
+            set { _tree = value; }
         }
 
         public WhileProgram(ProcedureSequence procs, StatementSequence stmts) {

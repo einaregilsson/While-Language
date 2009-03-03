@@ -26,6 +26,7 @@ using While.AST;
 using While.AST.Expressions;
 using While.AST.Sequences;
 using While.AST.Statements;
+using System.Collections.Generic;
 
 COMPILER Program
 	
@@ -51,9 +52,9 @@ IGNORE cr + lf + tab
 PRODUCTIONS
 
 Program<>
-=                                          				(.	StatementSequence statements;
+=                                          				(.	StatementSequence statements = null;
 															ProcedureSequence procs = new ProcedureSequence(); 
-															Token startTok, endTok; .)
+															Token startTok = null, endTok = null; .)
 
    	(
     IF(IsProcProgram())
@@ -63,13 +64,13 @@ Program<>
     		Proc<procs>
     	}
 
-    	StmtSeq<statements>
+    	StmtSeq<out statements>
     	"end"											(.	endTok = t; .)
     |
-    	StmtSeq<statements>
+    	StmtSeq<out statements>
     )
     
-    													(.	WhileProgram.Instance = new WhileProgram(statements, procs);
+    													(.	WhileProgram.Instance = new WhileProgram(procs, statements);
 															if (startTok != null && endTok != null) {
 																WhileProgram.Instance.AddSequencePoint(startTok);
 																WhileProgram.Instance.AddSequencePoint(endTok);
@@ -80,8 +81,8 @@ Program<>
 Proc<ProcedureSequence procs>
 =														(.	StatementSequence statements;
 															string name;
-															List<Variable> valArgs = new List<Variable>();
-															Variable resultArg; .)
+															VariableSequence valArgs = new VariableSequence();
+															Variable resultArg = null; .)
 	"proc"												(.	Token ptok = t; .)
 	ident												(.	name = t.val; .)
 	"("
@@ -90,33 +91,34 @@ Proc<ProcedureSequence procs>
 			"val"
 			ident										(.	Variable v = new Variable(t.val);
 															v.IsValueArg = true;
-															valArgs.Add(v);
-															SymbolTable.DefineArgument(t.val) .)
-			[Args<valArgs, resultArg>]
+															valArgs.AddVariable(v);
+															SymbolTable.DefineArgument(t.val); .)
+			[Args<valArgs, out resultArg>]
 		|
 			"res"
-			ident										(.	Variable resultArg = new Variable(t.val);
+			ident										(.	resultArg = new Variable(t.val);
 															resultArg.IsResultArg = true;
 															SymbolTable.DefineResultArgument(t.val); .)
 		)
 	]
 	")"													(.	SequencePoint seq1 = new SequencePoint(ptok.line,ptok.col, t.line,t.col+t.val.Length); .)
 	"is"
-	StmtSeq<statements>
-	"end"												(.	seq2 = new SequencePoint(t.line, t.col, t.line, t.col+t.val.Length); .)
+	StmtSeq<out statements>
+	"end"												(.	SequencePoint seq2 = new SequencePoint(t.line, t.col, t.line, t.col+t.val.Length); .)
 	";"													(.	if (procs.ContainsProcedure(name)) {
 																errors.SemErr(ptok.line, ptok.col, "Procedure '" + name + "' is already declared");
 															} else {
-																proc = Procedure(name, valArgs, resultArg, statements);
+																Procedure proc = new Procedure(name, valArgs, resultArg, statements);
 																proc.AddSequencePoint(seq1);
 																proc.AddSequencePoint(seq2);
-																procs.Add(name, proc);
+																procs.AddProcedure(proc);
 															}
 															SymbolTable.Clear();
 														.)
 .
 
-Args<VariableSequence vars, ref Variable resultArg> 
+Args<VariableSequence valArgs, out Variable resultArg> 
+                                                            (. resultArg = null; .)
 =
 	(
 	IF(IsStartOfResultArg()) 
@@ -141,37 +143,38 @@ Args<VariableSequence vars, ref Variable resultArg>
 													SymbolTable.DefineArgument(t.val);
 												}
 											.)
-	[Args<valArgs, resultArg>] 
+	[Args<valArgs, out resultArg>] 
 	)
 .
 
-StmtSeq<ref StatementSequence statements>
+StmtSeq<out StatementSequence statements>
 =													(. 	Statement stmt;
 														statements = new StatementSequence();
 													.)
-    Stmt<stmt>                         				(. statements.AddStatement(stmt); .)
+    Stmt<out stmt>                         				(. statements.AddStatement(stmt); .)
     {
-        ';' Stmt<stmt>                 				(. statements.AddStatement(stmt); .)
+        ';' Stmt<out stmt>                 				(. statements.AddStatement(stmt); .)
     }
 .
 
-Stmt<ref Statement stmt>
-=													(. 	Expression exp;
+Stmt<out Statement stmt>
+=													(. 	Expression exp = null;
+                                                        stmt = null;
 														int sl = la.line, sc = la.col;
 														StatementSequence stmtSeq; 
 														Token bf; .)
 
-	( AssignStmt<stmt>								(. stmt.AddSequencePoint((sl,sc, t.line,t.col+t.val.Length)); .)
+	( AssignStmt<out stmt>								(. stmt.AddSequencePoint(sl,sc, t.line,t.col+t.val.Length); .)
 	| "skip"                               			(. stmt = new Skip();stmt.AddSequencePoint(t); .)
-	| BlockStmt<stmt>                       
-	| IfStmt<stmt>
-	| WhileStmt<stmt>
-	| ReadStmt<stmt>								(. 	stmt.AddSequencePoint((sl,sc, t.line,t.col+t.val.Length));.)
-	| "write" Expr<exp>                				(. 	stmt = new Write(exp); stmt.AddSequencePoint((sl,sc, t.line,t.col+t.val.Length)); .)
-	| CallProc<stmt>								(. 	stmt.AddSequencePoint((sl,sc, t.line,t.col+t.val.Length)); .)
+	| BlockStmt<out stmt>                       
+	| IfStmt<out stmt>
+	| WhileStmt<out stmt>
+	| ReadStmt<out stmt>								(. 	stmt.AddSequencePoint(sl,sc, t.line,t.col+t.val.Length);.)
+	| "write" Expr<out exp>                				(. 	stmt = new Write(exp); stmt.AddSequencePoint(sl,sc, t.line,t.col+t.val.Length); .)
+	| CallProc<out stmt>								(. 	stmt.AddSequencePoint(sl,sc, t.line,t.col+t.val.Length); .)
 	| 
 		'(' 										(.	bf = t; .)
-		StmtSeq<stmtSeq> 
+		StmtSeq<out stmtSeq> 
 		')'											(.	stmt = stmtSeq;
 														stmt.AddSequencePoint(bf);
 														stmt.AddSequencePoint(t); .)
@@ -179,19 +182,20 @@ Stmt<ref Statement stmt>
 	)
 .
 
-ReadStmt<ref stmt as Statement>
+ReadStmt<out Statement stmt>
 =
+                                                    (. stmt = null; .)
 	"read" 
 	(
-		ident                         				(. 	stmt = new Read(Variable(t.val)); .)
+		ident                         				(. 	stmt = new Read(new Variable(t.val)); .)
 		|
 		'(' 
-		ident										(. 	stmt = new Read(Variable(t.val)); .)
+		ident										(. 	stmt = new Read(new Variable(t.val)); .)
 		')'
 	)
 .
 
-VarDecStmt<ref VariableDeclarationSequence vars>
+VarDecStmt<out VariableDeclarationSequence vars>
 =													(. vars = new VariableDeclarationSequence(); .)
 	VarDec<vars>
 	{
@@ -214,16 +218,16 @@ VarDec<VariableDeclarationSequence vars>
 														} else {
 															SymbolTable.DefineVariable(t.val);
 														}
-														vd = VariableDeclaration(Variable(t.val));
-														vd.AddSequencePoint((sl,sc,el,ec));
+														VariableDeclaration vd = new VariableDeclaration(new Variable(t.val));
+														vd.AddSequencePoint(sl,sc,el,ec);
 														vars.AddVariableDeclaration(vd); .)
 	';'
 .
 
-BlockStmt<ref block as Statement>                 
+BlockStmt<out Statement block>                 
 =
 	"begin"                                 		(.	if (CompileOptions.BookVersion) {
-															errors.SemErr(t.line, t.col, "Variable declarations are only allowed when using the /coursesyntax switch. Type 'wc.exe /help' for more information")M
+															errors.SemErr(t.line, t.col, "Variable declarations are only allowed when using the /coursesyntax switch. Type 'wc.exe /help' for more information");
 															System.Environment.Exit(1);
 														}
 														VariableDeclarationSequence vars = new VariableDeclarationSequence();
@@ -233,282 +237,289 @@ BlockStmt<ref block as Statement>
 														int el = t.line;
 														int ec = t.col+t.val.Length;
 														.)
-	[ VarDecStmt<vars> ]							(. StatementSequence statements; .)
-	StmtSeq<statements>                
-	"end"                       					(. 	Block block = new Block(vars, statements);
-														block.AddSequencePoint((sl,sc,el,ec));
+	[ VarDecStmt<out vars> ]							(. StatementSequence statements; .)
+	StmtSeq<out statements>                
+	"end"                       					(. 	block = new Block(vars, statements);
+														block.AddSequencePoint(sl,sc,el,ec);
 														block.AddSequencePoint(t);
 														SymbolTable.PopScope(); .)
 .
 
-AssignStmt<ref Statement assign>            		(. 	Expression exp;
-														Variable var; .)
+AssignStmt<out Statement assign>            		(. 	Expression exp;
+														Variable var; 
+														assign = null; .)
 =	ident                                  			(. 	var = new Variable(t.val);
-														if (!SymbolTable.IsInScope(t.val) and not CompileOptions.BookVersion) {
+														if (!SymbolTable.IsInScope(t.val) && !CompileOptions.BookVersion) {
 															errors.SemErr(t.line, t.col, string.Format("Assignment to undeclared variable '{0}'",t.val));
 														}
 													.)
-	":="											(. Token tok = t .)
-	Expr<exp>                          				(.	if (!ExpectInt(exp, tok, true)) {
+	":="											(. Token tok = t; .)
+	Expr<out exp>                          				(.	if (!ExpectInt(exp, tok, true)) {
 															return;
 														} 
 													.)
-													(. assign = new Assign(var, exp); .)
+													(. assign = new Assign(var, (TypedExpression<int>)exp); .)
 .
 
-IfStmt<ref ifStmt as Statement>           			(. 	ifBranch as StatementSequence; 
-														elseBranch as StatementSequence
-														tmpStmt as Statement
-														exp as Expression
-														sl as int
-														sc as int
-														el as int
-														ec as int
+IfStmt<out Statement ifStmt>           			(. 	StatementSequence ifBranch = null; 
+														StatementSequence elseBranch = null;
+														Statement tmpStmt = null;
+														Expression exp = null;
+														ifStmt = null;
 													.)
 =
-	"if"											(.  sl,sc,tok = t.line, t.col, t .)
-	Expr<exp>										(.	return unless ExpectBool(exp, tok, true) .)
-	"then"											(. 	el,ec = t.line, t.col+t.val.Length .)
+	"if"											(.  int sl = t.line; int sc = t.col; Token tok = t; .)
+	Expr<out exp>										(.	if (!ExpectBool(exp, tok, true)) {
+	                                                        return;
+	                                                    } .)
+	"then"											(. 	int el = t.line; int ec = t.col+t.val.Length; .)
 	
 	(
 		IF(CompileOptions.BookVersion) 
-			Stmt<tmpStmt>							(.	ifBranch = ToStmtSeq(tmpStmt) .)
+			Stmt<out tmpStmt>							(.	ifBranch = ToStatementSequence(tmpStmt); .)
 			[
 			    "else"
-				Stmt<tmpStmt>						(.	elseBranch = ToStmtSeq(tmpStmt) .)	
+				Stmt<out tmpStmt>						(.	elseBranch = ToStatementSequence(tmpStmt); .)	
 			]
 		|
-			StmtSeq<ifBranch>
+			StmtSeq<out ifBranch>
 			[
 			    "else"
-			    StmtSeq<elseBranch>
+			    StmtSeq<out elseBranch>
 			]
-			"fi"									(.	ifBranch.AddSequencePoint(t)
-														elseBranch.AddSequencePoint(t) if elseBranch
+			"fi"									(.	ifBranch.AddSequencePoint(t);
+														if (elseBranch != null) {
+														    elseBranch.AddSequencePoint(t);
+														} 
 													.)
 
 	)
-		                                  			(. 	ifStmt = If(exp, ifBranch, elseBranch) 
-														ifStmt.AddSequencePoint((sl,sc,el,ec))
+		                                  			(. 	ifStmt = new If((TypedExpression<bool>)exp, ifBranch, elseBranch);
+														ifStmt.AddSequencePoint(sl,sc,el,ec);
 													.)
 .
 
-WhileStmt<ref whileStmt as Statement>          		(.	exp as Expression
-														whileBranch as StatementSequence
-														branchStmt as Statement
-														sl as int
-														sc as int
-														el as int
-														ec as int.)
+WhileStmt<out Statement whileStmt>          		(.	Expression exp = null;
+														StatementSequence whileBranch = null;
+														Statement branchStmt = null;
+														whileStmt = null;
+                                                    .)
 =
-	"while"											(. 	sl,sc,tok = t.line, t.col,t .)
-	Expr<exp>										(. 	return unless ExpectBool(exp, tok, true) .)
-	"do"											(.	el,ec = t.line, t.col+t.val.Length .)
+	"while"											(. 	int sl = t.line; int sc = t.col; Token tok = t; .)
+	Expr<out exp>										(. 	if (!ExpectBool(exp, tok, true)) { return; } .)
+	"do"											(.	int el = t.line; int ec = t.col+t.val.Length; .)
 	(
 		IF(CompileOptions.BookVersion)
-		Stmt<branchStmt>							(.	whileBranch = ToStmtSeq(branchStmt) .)
+		Stmt<out branchStmt>							(.	whileBranch = ToStatementSequence(branchStmt); .)
 	|
-		StmtSeq<whileBranch>
-		"od"										(.	whileBranch.AddSequencePoint(t) .)
+		StmtSeq<out whileBranch>
+		"od"										(.	whileBranch.AddSequencePoint(t); .)
 	)
-		                                   			(. 	whileStmt = While(exp, whileBranch) 
-														whileStmt.AddSequencePoint((sl,sc,el,ec))
+		                                   			(. 	whileStmt = new While.AST.Statements.While((TypedExpression<bool>)exp, whileBranch);
+														whileStmt.AddSequencePoint(sl,sc,el,ec);
 													.)
 .
 
-CallProc<ref callStmt as Statement>
-=													(.	exp as Expression
-														list = List[of Expression]()	.)
-	"call"											(.	callToken = t 
-														exprToken as Token.)
-	ident											(.	proc = t.val .)
+CallProc<out Statement callStmt>
+=													(.	Expression exp;
+														List<Expression> expressions = new List<Expression>();	.)
+	"call"											(.	Token callToken = t;
+														Token exprToken = null;.)
+	ident											(.	string proc = t.val; .)
 	"("
 	[
-													(.	exprToken = la .)
-		Expr<exp>									(.	list.Add(exp); ExpectIntArg(exp, exprToken) .)
+													(.	exprToken = la; .)
+		Expr<out exp>									(.	expressions.Add(exp); ExpectIntArg(exp, exprToken); .)
 		{ 
-			"," 									(.	exprToken = la .)
-			Expr<exp>								(.	list.Add(exp); ExpectIntArg(exp, exprToken) .)
+			"," 									(.	exprToken = la; .)
+			Expr<out exp>								(.	expressions.Add(exp); ExpectIntArg(exp, exprToken); .)
 		}
 	]
-	")"												(.	callStmt = Call(proc, list, callToken, exprToken) .)
+	")"												(.	callStmt = new Call(proc, expressions, callToken, exprToken); .)
 .
 
 
-Expr<ref exp as Expression>
+Expr<out Expression exp>
 =	
-    LogicOr<exp>                      
+    LogicOr<out exp>                      
 .
 
 
-LogicOr<ref exp as Expression>                	(. second as Expression .)
+LogicOr<out Expression exp>                	    (. Expression second; .)
 =	
-    LogicAnd<exp>                      
+    LogicAnd<out exp>                      
     {
-        "or"          							(. tok = t .)
-        LogicAnd<second>						(.	return unless ExpectBool(exp, tok, false) 
-													return unless ExpectBool(second, tok, true) 
-													exp = LogicBinaryOp(exp, second, LogicBinaryOp.Or) .)
+        "or"          							(. Token tok = t; .)
+        LogicAnd<out second>						(.	if (!ExpectBool(exp, tok, false)) { return; } 
+													if (!ExpectBool(second, tok, true)) { return; } 
+													exp = new LogicalOr((TypedExpression<bool>)exp, (TypedExpression<bool>)second); .)
     }                                       
 .
 
-LogicAnd<ref exp as Expression>                	(. second as Expression .)                
+LogicAnd<out Expression exp>                	(. Expression second; .)                
 =	
-    LogicXor<exp>
+    LogicXor<out exp>
     {                            
-        "and"                    				(. 	tok = t .)
-        LogicXor<second>						(.	return unless ExpectBool(exp, tok, false) 
-													return unless ExpectBool(second, tok, true) 
-													exp = LogicBinaryOp(exp, second, LogicBinaryOp.And) .)
+        "and"                    				(. 	Token tok = t; .)
+        LogicXor<out second>						(.	if (!ExpectBool(exp, tok, false)) { return; } 
+													if (!ExpectBool(second, tok, true)) { return; } 
+													exp = new LogicalAnd((TypedExpression<bool>) exp, (TypedExpression<bool>) second); .)
     }
 .
 
-LogicXor<ref exp as Expression>                	(. second as Expression .)                
+LogicXor<out Expression exp>                	(. Expression second; .)                
 =	
-    Comparison<exp>
+    Comparison<out exp>
     {                            
-        "xor"                    				(. 	tok = t .)
-        Comparison<second>						(.	return unless ExpectBool(exp, tok, false) 
-													return unless ExpectBool(second, tok, true) 
-													exp = LogicBinaryOp(exp, second, LogicBinaryOp.Xor) .)
+        "xor"                    				(. 	Token tok = t; .)
+        Comparison<out second>						(.	if (!ExpectBool(exp, tok, false)) { return; } 
+													if (!ExpectBool(second, tok, true)) { return; } 
+													exp = new LogicalXor((TypedExpression<bool>)exp, (TypedExpression<bool>)second); .)
     }
 .
 
-Comparison<ref exp as Expression>           	(.	second as Expression 
-													op as string .)
+Comparison<out Expression exp>           	(.	Expression second; .)
 =
-    BitOr<exp>
+    BitOr<out exp>
     [
         (
-        "<"                            			(.	op = ComparisonBinaryOp.LessThan .)
-        |
-        ">"                                		(.	op = ComparisonBinaryOp.GreaterThan .)
-        |
-        "<="                               		(.	op = ComparisonBinaryOp.LessThanOrEqual .)
-        |
-        ">="                               		(.	op = ComparisonBinaryOp.GreaterThanOrEqual .)
-		|
-        "=="                               		(.	op = ComparisonBinaryOp.Equal.)
-        |
-        "!="                               		(.	op = ComparisonBinaryOp.NotEqual .)
-        
-        )										(. 	tok = t .)
-        Comparison<second>						(.	return unless ExpectInt(exp, tok, false) 
-													return unless ExpectInt(second, tok, true) 
-													exp = ComparisonBinaryOp(exp, second, op) .)
+        "<"|">"|"<="|">="|"=="|"!="             
+        )										(. 	Token tok = t; .)
+        Comparison<out second>						(.	if (!ExpectInt(exp, tok, false)) { return; };
+													if (!ExpectInt(second, tok, true)) { return; };
+													if (tok.val == "<") {
+													    exp = new LessThan((TypedExpression<int>)exp, (TypedExpression<int>)second);
+													} else if (tok.val == ">") {
+													    exp = new GreaterThan((TypedExpression<int>)exp, (TypedExpression<int>)second); 
+													} else if (tok.val == "<=") {
+													    exp = new LessThanOrEqual((TypedExpression<int>)exp, (TypedExpression<int>)second); 
+													} else if (tok.val == ">=") {
+													    exp = new GreaterThanOrEqual((TypedExpression<int>)exp, (TypedExpression<int>)second); 
+													} else if (tok.val == "==") {
+													    exp = new Equal((TypedExpression<int>)exp, (TypedExpression<int>)second); 
+													} else if (tok.val == "!=") {
+													    exp = new NotEqual((TypedExpression<int>)exp, (TypedExpression<int>)second); 
+													}
+													.)
     ]
 .
 
-BitOr<ref exp as Expression>                	(.	second as Expression .)                  
+BitOr<out Expression exp>                	(.	Expression second; .)                  
 =	
-    BitXor<exp>
+    BitXor<out exp>
     {
-        "|"       								(. 	tok = t .)
-        BitXor<second>                 			(.	return unless ExpectInt(exp, tok, false) 
-													return unless ExpectInt(second, tok, true) 
-													exp = BitBinaryOp(exp, second, BitBinaryOp.Or) .)
+        "|"       								(. 	Token tok = t; .)
+        BitXor<out second>                 			(.	if (!ExpectInt(exp, tok, false)) { return; } 
+													if (!ExpectInt(second, tok, true)) { return; } 
+													exp = new BitwiseOr((TypedExpression<int>)exp, (TypedExpression<int>)second); .)
     }
 .
 
-BitXor<ref exp as Expression>                	(.	second as Expression .)                 
+BitXor<out Expression exp>                	(.	Expression second; .)                 
 =	
-    BitAnd<exp>
+    BitAnd<out exp>
     {
-        "^"     								(.	tok = t .)
-        BitAnd<second>                 			(.	return unless ExpectInt(exp, tok, false) 
-													return unless ExpectInt(second, tok, true) 
-													exp = BitBinaryOp(exp, second, BitBinaryOp.Xor) .)
+        "^"     								(. Token tok = t; .)
+        BitAnd<out second>                 			(.	if (!ExpectInt(exp, tok, false)) { return; } 
+													if (!ExpectInt(second, tok, true)) { return; } 
+													exp = new BitwiseXor((TypedExpression<int>)exp, (TypedExpression<int>)second); .)
     }
 .
 
-BitAnd<ref exp as Expression>                	(.	second as Expression .)                 
+BitAnd<out Expression exp>                	(.	Expression second; .)                 
 =	
-    BitShift<exp>
+    BitShift<out exp>
     {
-        "&"                             		(. 	tok = t .)
-        BitShift<second>                  		(.	return unless ExpectInt(exp, tok, false) 
-													return unless ExpectInt(second, tok, true) 
-													exp = BitBinaryOp(exp, second, BitBinaryOp.And) .)
+        "&"                             		(. 	Token tok = t; .)
+        BitShift<out second>                  		(.	if (!ExpectInt(exp, tok, false)) { return; } 
+													if (!ExpectInt(second, tok, true)) { return; } 
+													exp = new BitwiseAnd((TypedExpression<int>)exp, (TypedExpression<int>)second); .)
     }
 .
 
-BitShift<ref exp as Expression>                	(.	second as Expression
-													op as string .)               
+BitShift<out Expression exp>                	(.	Expression second; .)
 =	
-    PlusMinus<exp>
-    {
-        (
-        "<<"                               		(.	op = BitBinaryOp.ShiftLeft .)
-        |
-        ">>"                               		(.	op = BitBinaryOp.ShiftRight .)
-        )             							(. 	tok = t .)
-        PlusMinus<second>              			(.	return unless ExpectInt(exp, tok, false) 
-													return unless ExpectInt(second, tok, true) 
-													exp = BitBinaryOp(exp, second, op).)
-    }
-.
-
-PlusMinus<ref exp as Expression>                (. 	second as Expression 
-													op as string.)              
-=	
-    MulDivMod<exp>
+    PlusMinus<out exp>
     {
         (
-        "+"                                		(. 	op = ArithmeticBinaryOp.Plus .)
-        |
-        "-"                                		(. 	op = ArithmeticBinaryOp.Minus .)
-        )             							(. 	tok = t .)
-        MulDivMod<second>              			(.	return unless ExpectInt(exp, tok, false) 
-													return unless ExpectInt(second, tok, true) 
-													exp = ArithmeticBinaryOp(exp, second, op) .)
+        "<<"|">>"                               		
+        )             							(. 	Token tok = t; .)
+        PlusMinus<out second>              			(.	if (!ExpectInt(exp, tok, false)) { return; } 
+													if (!ExpectInt(second, tok, true)) { return; } 
+													if (t.val == "<<") {
+													    exp = new ShiftLeft((TypedExpression<int>)exp, (TypedExpression<int>)second);
+													} else if (t.val == ">>") {
+													    exp = new ShiftRight((TypedExpression<int>)exp, (TypedExpression<int>)second);
+													}
+												.)
+													
     }
 .
 
-MulDivMod<ref exp as Expression>                (. second as Expression .)              
+PlusMinus<out Expression exp>                (. 	Expression second; .)
 =	
-    UnaryOperator<exp>
+    MulDivMod<out exp>
     {
-        (
-        "*"                                		(. 	op = ArithmeticBinaryOp.Multiplication .)
-        |
-        "/"                                		(. 	op = ArithmeticBinaryOp.Division .)
-        |
-        "%"                                		(. 	op = ArithmeticBinaryOp.Modulo .)
-        )             							(. 	tok = t .)
-        UnaryOperator<second>          			(.	return unless ExpectInt(exp, tok, false) 
-													return unless ExpectInt(second, tok, true) 
-													exp = ArithmeticBinaryOp(exp, second, op) .)
+        ("+"|"-")             					(. 	Token tok = t; .)
+        MulDivMod<out second>              			(.	if (!ExpectInt(exp, tok, false)) { return; } 
+													if (!ExpectInt(second, tok, true)) { return; } 
+													if (t.val == "+") {
+													    exp = new Plus((TypedExpression<int>)exp, (TypedExpression<int>)second);
+													} else if (t.val == "-") {
+													    exp = new Minus((TypedExpression<int>)exp, (TypedExpression<int>)second);
+													}
+													 .)
     }
 .
 
+MulDivMod<out Expression exp>                (. 	Expression second; .)
+=	
+    UnaryOperator<out exp>
+    {
+        ("*"|"/"|"%")             					(. 	Token tok = t; .)
+        UnaryOperator<out second>              			(.	if (!ExpectInt(exp, tok, false)) { return; } 
+													    if (!ExpectInt(second, tok, true)) { return; } 
+													    if (t.val == "*") {
+													        exp = new Multiplication((TypedExpression<int>)exp, (TypedExpression<int>)second);
+													    } else if (t.val == "/") {
+													        exp = new Division((TypedExpression<int>)exp, (TypedExpression<int>)second);
+													    } else if (t.val == "%") {
+													        exp = new Modulo((TypedExpression<int>)exp, (TypedExpression<int>)second);
+													    }
+													 .)
+    }
+.
 
-UnaryOperator<ref exp as Expression>          	(.	op as string = null .)
+UnaryOperator<out Expression exp>               (. Token tok = null; string op = null; .)
 =                               
 	[
-	'-'                                    		(. 	op = t.val .)
-	|
-	'~'                                    		(. 	op = t.val .)
-	|
-	"not"                                  		(. 	op = t.val .)
-												(.	tok = t .)
+	'-'|'~'|"not"								(. tok = t; op = t.val; .)
 	]
-	Terminal<exp>                      			(.	if op in ('-','~'): 
-														return unless ExpectInt(exp, tok, true)
-														exp = IntUnaryOp(exp, op)
-													elif op == 'not':
-														return unless ExpectBool(exp, tok, true)
-														exp = NotUnaryOp(exp) .)
+	Terminal<out exp>                      			(.	if (op == "-") {
+														if (!ExpectInt(exp, tok, true)) { return; }
+														exp = new UnaryMinus((TypedExpression<int>)exp);
+													} else if (op == "~") {
+														if (!ExpectInt((TypedExpression<int>)exp, tok, true)) { return; }
+														exp = new OnesComplement((TypedExpression<int>)exp);
+													} else if (op == "not") {
+														if (!ExpectBool(exp, tok, true)) { return; }
+														exp = new Not((TypedExpression<bool>)exp);
+													}
+												.)
 .
 
-Terminal<ref exp as Expression>               
+Terminal<out Expression exp>               
+                                                (. exp = null; .)
 =
-	( ident                                		(. 	exp = Variable(t.val) 
-													if not SymbolTable.IsInScope(t.val) and not CompileOptions.BookVersion:
-														errors.SemErr(t.line, t.col, "Undeclared variable '${t.val}'") .)
-	| number                               		(. exp = Number(int.Parse(t.val)) .)
-	| "true"                               		(. exp = Bool(true) .)
-	| "false"                              		(. exp = Bool(false) .)
-	| '(' Expr<exp> ')'
+	( ident                                		(. 	exp = new Variable(t.val);
+													if (!SymbolTable.IsInScope(t.val) && !CompileOptions.BookVersion) {
+														errors.SemErr(t.line, t.col, string.Format("Undeclared variable '{0}'", t.val)); 
+													}
+												.)
+	| number                               		(. exp = new Number(int.Parse(t.val)); .)
+	| "true"                               		(. exp = new Bool(true); .)
+	| "false"                              		(. exp = new Bool(false); .)
+	| '(' Expr<out exp> ')'
 	)
 .
 

@@ -2,6 +2,7 @@ using While.AST;
 using While.AST.Expressions;
 using While.AST.Sequences;
 using While.AST.Statements;
+using System.Collections.Generic;
 
 using System;
 
@@ -29,9 +30,9 @@ public partial class Parser {
 	}
 	
 	void Program() {
-		StatementSequence statements;
+		StatementSequence statements = null;
 		ProcedureSequence procs = new ProcedureSequence(); 
-		Token startTok, endTok; 
+		Token startTok = null, endTok = null; 
 		if (IsProcProgram()) {
 			Expect(3);
 			startTok = t; 
@@ -39,13 +40,13 @@ public partial class Parser {
 			while (la.kind == 5) {
 				Proc(procs);
 			}
-			StmtSeq(statements);
+			StmtSeq(out statements);
 			Expect(4);
 			endTok = t; 
 		} else if (StartOf(1)) {
-			StmtSeq(statements);
+			StmtSeq(out statements);
 		} else SynErr(50);
-		WhileProgram.Instance = new WhileProgram(statements, procs);
+		WhileProgram.Instance = new WhileProgram(procs, statements);
 		if (startTok != null && endTok != null) {
 			WhileProgram.Instance.AddSequencePoint(startTok);
 			WhileProgram.Instance.AddSequencePoint(endTok);
@@ -56,8 +57,8 @@ public partial class Parser {
 	void Proc(ProcedureSequence procs) {
 		StatementSequence statements;
 		string name;
-		List<Variable> valArgs = new List<Variable>();
-		Variable resultArg; 
+		VariableSequence valArgs = new VariableSequence();
+		Variable resultArg = null; 
 		Expect(5);
 		Token ptok = t; 
 		Expect(1);
@@ -69,15 +70,15 @@ public partial class Parser {
 				Expect(1);
 				Variable v = new Variable(t.val);
 				v.IsValueArg = true;
-				valArgs.Add(v);
-				SymbolTable.DefineArgument(t.val) 
+				valArgs.AddVariable(v);
+				SymbolTable.DefineArgument(t.val); 
 				if (la.kind == 12) {
-					Args(valArgs, resultArg);
+					Args(valArgs, out resultArg);
 				}
 			} else {
 				Get();
 				Expect(1);
-				Variable resultArg = new Variable(t.val);
+				resultArg = new Variable(t.val);
 				resultArg.IsResultArg = true;
 				SymbolTable.DefineResultArgument(t.val); 
 			}
@@ -85,36 +86,37 @@ public partial class Parser {
 		Expect(9);
 		SequencePoint seq1 = new SequencePoint(ptok.line,ptok.col, t.line,t.col+t.val.Length); 
 		Expect(10);
-		StmtSeq(statements);
+		StmtSeq(out statements);
 		Expect(4);
-		seq2 = new SequencePoint(t.line, t.col, t.line, t.col+t.val.Length); 
+		SequencePoint seq2 = new SequencePoint(t.line, t.col, t.line, t.col+t.val.Length); 
 		Expect(11);
 		if (procs.ContainsProcedure(name)) {
 		errors.SemErr(ptok.line, ptok.col, "Procedure '" + name + "' is already declared");
 		} else {
-			proc = Procedure(name, valArgs, resultArg, statements);
+			Procedure proc = new Procedure(name, valArgs, resultArg, statements);
 			proc.AddSequencePoint(seq1);
 			proc.AddSequencePoint(seq2);
-			procs.Add(name, proc);
+			procs.AddProcedure(proc);
 		}
 		SymbolTable.Clear();
 		
 	}
 
-	void StmtSeq(ref StatementSequence statements) {
+	void StmtSeq(out StatementSequence statements) {
 		Statement stmt;
 		statements = new StatementSequence();
 		
-		Stmt(stmt);
+		Stmt(out stmt);
 		statements.AddStatement(stmt); 
 		while (la.kind == 11) {
 			Get();
-			Stmt(stmt);
+			Stmt(out stmt);
 			statements.AddStatement(stmt); 
 		}
 	}
 
-	void Args(VariableSequence vars, ref Variable resultArg) {
+	void Args(VariableSequence valArgs, out Variable resultArg) {
+		resultArg = null; 
 		if (IsStartOfResultArg()) {
 			Expect(12);
 			Expect(8);
@@ -140,20 +142,21 @@ public partial class Parser {
 			}
 			
 			if (la.kind == 12) {
-				Args(valArgs, resultArg);
+				Args(valArgs, out resultArg);
 			}
 		} else SynErr(51);
 	}
 
-	void Stmt(ref Statement stmt) {
-		Expression exp;
+	void Stmt(out Statement stmt) {
+		Expression exp = null;
+		                                     stmt = null;
 		int sl = la.line, sc = la.col;
 		StatementSequence stmtSeq; 
 		Token bf; 
 		switch (la.kind) {
 		case 1: {
-			AssignStmt(stmt);
-			stmt.AddSequencePoint((sl,sc, t.line,t.col+t.val.Length)); 
+			AssignStmt(out stmt);
+			stmt.AddSequencePoint(sl,sc, t.line,t.col+t.val.Length); 
 			break;
 		}
 		case 13: {
@@ -162,37 +165,37 @@ public partial class Parser {
 			break;
 		}
 		case 3: {
-			BlockStmt(stmt);
+			BlockStmt(out stmt);
 			break;
 		}
 		case 18: {
-			IfStmt(stmt);
+			IfStmt(out stmt);
 			break;
 		}
 		case 22: {
-			WhileStmt(stmt);
+			WhileStmt(out stmt);
 			break;
 		}
 		case 15: {
-			ReadStmt(stmt);
-			stmt.AddSequencePoint((sl,sc, t.line,t.col+t.val.Length));
+			ReadStmt(out stmt);
+			stmt.AddSequencePoint(sl,sc, t.line,t.col+t.val.Length);
 			break;
 		}
 		case 14: {
 			Get();
-			Expr(exp);
-			stmt = new Write(exp); stmt.AddSequencePoint((sl,sc, t.line,t.col+t.val.Length)); 
+			Expr(out exp);
+			stmt = new Write(exp); stmt.AddSequencePoint(sl,sc, t.line,t.col+t.val.Length); 
 			break;
 		}
 		case 25: {
-			CallProc(stmt);
-			stmt.AddSequencePoint((sl,sc, t.line,t.col+t.val.Length)); 
+			CallProc(out stmt);
+			stmt.AddSequencePoint(sl,sc, t.line,t.col+t.val.Length); 
 			break;
 		}
 		case 6: {
 			Get();
 			bf = t; 
-			StmtSeq(stmtSeq);
+			StmtSeq(out stmtSeq);
 			Expect(9);
 			stmt = stmtSeq;
 			stmt.AddSequencePoint(bf);
@@ -203,29 +206,30 @@ public partial class Parser {
 		}
 	}
 
-	void AssignStmt(ref Statement assign) {
+	void AssignStmt(out Statement assign) {
 		Expression exp;
 		Variable var; 
+		assign = null; 
 		Expect(1);
 		var = new Variable(t.val);
-		if (!SymbolTable.IsInScope(t.val) and not CompileOptions.BookVersion) {
+		if (!SymbolTable.IsInScope(t.val) && !CompileOptions.BookVersion) {
 			errors.SemErr(t.line, t.col, string.Format("Assignment to undeclared variable '{0}'",t.val));
 		}
 		
 		Expect(17);
-		Token tok = t 
-		Expr(exp);
+		Token tok = t; 
+		Expr(out exp);
 		if (!ExpectInt(exp, tok, true)) {
 		return;
 		} 
 		
-		assign = new Assign(var, exp); 
+		assign = new Assign(var, (TypedExpression<int>)exp); 
 	}
 
-	void BlockStmt(ref block as Statement) {
+	void BlockStmt(out Statement block) {
 		Expect(3);
 		if (CompileOptions.BookVersion) {
-		errors.SemErr(t.line, t.col, "Variable declarations are only allowed when using the /coursesyntax switch. Type 'wc.exe /help' for more information")M
+		errors.SemErr(t.line, t.col, "Variable declarations are only allowed when using the /coursesyntax switch. Type 'wc.exe /help' for more information");
 		System.Environment.Exit(1);
 		}
 		VariableDeclarationSequence vars = new VariableDeclarationSequence();
@@ -236,126 +240,126 @@ public partial class Parser {
 		int ec = t.col+t.val.Length;
 		
 		if (la.kind == 16) {
-			VarDecStmt(vars);
+			VarDecStmt(out vars);
 		}
 		StatementSequence statements; 
-		StmtSeq(statements);
+		StmtSeq(out statements);
 		Expect(4);
-		Block block = new Block(vars, statements);
-		block.AddSequencePoint((sl,sc,el,ec));
+		block = new Block(vars, statements);
+		block.AddSequencePoint(sl,sc,el,ec);
 		block.AddSequencePoint(t);
 		SymbolTable.PopScope(); 
 	}
 
-	void IfStmt(ref ifStmt as Statement) {
-		ifBranch as StatementSequence; 
-		elseBranch as StatementSequence
-		tmpStmt as Statement
-		exp as Expression
-		sl as int
-		sc as int
-		el as int
-		ec as int
+	void IfStmt(out Statement ifStmt) {
+		StatementSequence ifBranch = null; 
+		StatementSequence elseBranch = null;
+		Statement tmpStmt = null;
+		Expression exp = null;
+		ifStmt = null;
 		
 		Expect(18);
-		sl,sc,tok = t.line, t.col, t 
-		Expr(exp);
-		return unless ExpectBool(exp, tok, true) 
+		int sl = t.line; int sc = t.col; Token tok = t; 
+		Expr(out exp);
+		if (!ExpectBool(exp, tok, true)) {
+		                             return;
+		                         } 
 		Expect(19);
-		el,ec = t.line, t.col+t.val.Length 
+		int el = t.line; int ec = t.col+t.val.Length; 
 		if (CompileOptions.BookVersion) {
-			Stmt(tmpStmt);
-			ifBranch = ToStmtSeq(tmpStmt) 
+			Stmt(out tmpStmt);
+			ifBranch = ToStatementSequence(tmpStmt); 
 			if (la.kind == 20) {
 				Get();
-				Stmt(tmpStmt);
-				elseBranch = ToStmtSeq(tmpStmt) 
+				Stmt(out tmpStmt);
+				elseBranch = ToStatementSequence(tmpStmt); 
 			}
 		} else if (StartOf(1)) {
-			StmtSeq(ifBranch);
+			StmtSeq(out ifBranch);
 			if (la.kind == 20) {
 				Get();
-				StmtSeq(elseBranch);
+				StmtSeq(out elseBranch);
 			}
 			Expect(21);
-			ifBranch.AddSequencePoint(t)
-			elseBranch.AddSequencePoint(t) if elseBranch
+			ifBranch.AddSequencePoint(t);
+			if (elseBranch != null) {
+			    elseBranch.AddSequencePoint(t);
+			} 
 			
 		} else SynErr(53);
-		ifStmt = If(exp, ifBranch, elseBranch) 
-		ifStmt.AddSequencePoint((sl,sc,el,ec))
+		ifStmt = new If((TypedExpression<bool>)exp, ifBranch, elseBranch);
+		ifStmt.AddSequencePoint(sl,sc,el,ec);
 		
 	}
 
-	void WhileStmt(ref whileStmt as Statement) {
-		exp as Expression
-		whileBranch as StatementSequence
-		branchStmt as Statement
-		sl as int
-		sc as int
-		el as int
-		ec as int
+	void WhileStmt(out Statement whileStmt) {
+		Expression exp = null;
+		StatementSequence whileBranch = null;
+		Statement branchStmt = null;
+		whileStmt = null;
+		                                      
 		Expect(22);
-		sl,sc,tok = t.line, t.col,t 
-		Expr(exp);
-		return unless ExpectBool(exp, tok, true) 
+		int sl = t.line; int sc = t.col; Token tok = t; 
+		Expr(out exp);
+		if (!ExpectBool(exp, tok, true)) { return; } 
 		Expect(23);
-		el,ec = t.line, t.col+t.val.Length 
+		int el = t.line; int ec = t.col+t.val.Length; 
 		if (CompileOptions.BookVersion) {
-			Stmt(branchStmt);
-			whileBranch = ToStmtSeq(branchStmt) 
+			Stmt(out branchStmt);
+			whileBranch = ToStatementSequence(branchStmt); 
 		} else if (StartOf(1)) {
-			StmtSeq(whileBranch);
+			StmtSeq(out whileBranch);
 			Expect(24);
-			whileBranch.AddSequencePoint(t) 
+			whileBranch.AddSequencePoint(t); 
 		} else SynErr(54);
-		whileStmt = While(exp, whileBranch) 
-		whileStmt.AddSequencePoint((sl,sc,el,ec))
+		whileStmt = new While.AST.Statements.While((TypedExpression<bool>)exp, whileBranch);
+		whileStmt.AddSequencePoint(sl,sc,el,ec);
 		
 	}
 
-	void ReadStmt(ref stmt as Statement) {
+	void ReadStmt(out Statement stmt) {
+		stmt = null; 
 		Expect(15);
 		if (la.kind == 1) {
 			Get();
-			stmt = new Read(Variable(t.val)); 
+			stmt = new Read(new Variable(t.val)); 
 		} else if (la.kind == 6) {
 			Get();
 			Expect(1);
-			stmt = new Read(Variable(t.val)); 
+			stmt = new Read(new Variable(t.val)); 
 			Expect(9);
 		} else SynErr(55);
 	}
 
-	void Expr(ref exp as Expression) {
-		LogicOr(exp);
+	void Expr(out Expression exp) {
+		LogicOr(out exp);
 	}
 
-	void CallProc(ref callStmt as Statement) {
-		exp as Expression
-		list = List[of Expression]()	
+	void CallProc(out Statement callStmt) {
+		Expression exp;
+		List<Expression> expressions = new List<Expression>();	
 		Expect(25);
-		callToken = t 
-		exprToken as Token
+		Token callToken = t;
+		Token exprToken = null;
 		Expect(1);
-		proc = t.val 
+		string proc = t.val; 
 		Expect(6);
 		if (StartOf(2)) {
-			exprToken = la 
-			Expr(exp);
-			list.Add(exp); ExpectIntArg(exp, exprToken) 
+			exprToken = la; 
+			Expr(out exp);
+			expressions.Add(exp); ExpectIntArg(exp, exprToken); 
 			while (la.kind == 12) {
 				Get();
-				exprToken = la 
-				Expr(exp);
-				list.Add(exp); ExpectIntArg(exp, exprToken) 
+				exprToken = la; 
+				Expr(out exp);
+				expressions.Add(exp); ExpectIntArg(exp, exprToken); 
 			}
 		}
 		Expect(9);
-		callStmt = Call(proc, list, callToken, exprToken) 
+		callStmt = new Call(proc, expressions, callToken, exprToken); 
 	}
 
-	void VarDecStmt(ref VariableDeclarationSequence vars) {
+	void VarDecStmt(out VariableDeclarationSequence vars) {
 		vars = new VariableDeclarationSequence(); 
 		VarDec(vars);
 		while (la.kind == 16) {
@@ -378,239 +382,258 @@ public partial class Parser {
 		} else {
 			SymbolTable.DefineVariable(t.val);
 		}
-		vd = VariableDeclaration(Variable(t.val));
-		vd.AddSequencePoint((sl,sc,el,ec));
+		VariableDeclaration vd = new VariableDeclaration(new Variable(t.val));
+		vd.AddSequencePoint(sl,sc,el,ec);
 		vars.AddVariableDeclaration(vd); 
 		Expect(11);
 	}
 
-	void LogicOr(ref exp as Expression) {
-		second as Expression 
-		LogicAnd(exp);
+	void LogicOr(out Expression exp) {
+		Expression second; 
+		LogicAnd(out exp);
 		while (la.kind == 26) {
 			Get();
-			tok = t 
-			LogicAnd(second);
-			return unless ExpectBool(exp, tok, false) 
-			return unless ExpectBool(second, tok, true) 
-			exp = LogicBinaryOp(exp, second, LogicBinaryOp.Or) 
+			Token tok = t; 
+			LogicAnd(out second);
+			if (!ExpectBool(exp, tok, false)) { return; } 
+			if (!ExpectBool(second, tok, true)) { return; } 
+			exp = new LogicalOr((TypedExpression<bool>)exp, (TypedExpression<bool>)second); 
 		}
 	}
 
-	void LogicAnd(ref exp as Expression) {
-		second as Expression 
-		LogicXor(exp);
+	void LogicAnd(out Expression exp) {
+		Expression second; 
+		LogicXor(out exp);
 		while (la.kind == 27) {
 			Get();
-			tok = t 
-			LogicXor(second);
-			return unless ExpectBool(exp, tok, false) 
-			return unless ExpectBool(second, tok, true) 
-			exp = LogicBinaryOp(exp, second, LogicBinaryOp.And) 
+			Token tok = t; 
+			LogicXor(out second);
+			if (!ExpectBool(exp, tok, false)) { return; } 
+			if (!ExpectBool(second, tok, true)) { return; } 
+			exp = new LogicalAnd((TypedExpression<bool>) exp, (TypedExpression<bool>) second); 
 		}
 	}
 
-	void LogicXor(ref exp as Expression) {
-		second as Expression 
-		Comparison(exp);
+	void LogicXor(out Expression exp) {
+		Expression second; 
+		Comparison(out exp);
 		while (la.kind == 28) {
 			Get();
-			tok = t 
-			Comparison(second);
-			return unless ExpectBool(exp, tok, false) 
-			return unless ExpectBool(second, tok, true) 
-			exp = LogicBinaryOp(exp, second, LogicBinaryOp.Xor) 
+			Token tok = t; 
+			Comparison(out second);
+			if (!ExpectBool(exp, tok, false)) { return; } 
+			if (!ExpectBool(second, tok, true)) { return; } 
+			exp = new LogicalXor((TypedExpression<bool>)exp, (TypedExpression<bool>)second); 
 		}
 	}
 
-	void Comparison(ref exp as Expression) {
-		second as Expression 
-		op as string 
-		BitOr(exp);
+	void Comparison(out Expression exp) {
+		Expression second; 
+		BitOr(out exp);
 		if (StartOf(3)) {
 			switch (la.kind) {
 			case 29: {
 				Get();
-				op = ComparisonBinaryOp.LessThan 
 				break;
 			}
 			case 30: {
 				Get();
-				op = ComparisonBinaryOp.GreaterThan 
 				break;
 			}
 			case 31: {
 				Get();
-				op = ComparisonBinaryOp.LessThanOrEqual 
 				break;
 			}
 			case 32: {
 				Get();
-				op = ComparisonBinaryOp.GreaterThanOrEqual 
 				break;
 			}
 			case 33: {
 				Get();
-				op = ComparisonBinaryOp.Equal
 				break;
 			}
 			case 34: {
 				Get();
-				op = ComparisonBinaryOp.NotEqual 
 				break;
 			}
 			}
-			tok = t 
-			Comparison(second);
-			return unless ExpectInt(exp, tok, false) 
-			return unless ExpectInt(second, tok, true) 
-			exp = ComparisonBinaryOp(exp, second, op) 
+			Token tok = t; 
+			Comparison(out second);
+			if (!ExpectInt(exp, tok, false)) { return; };
+			if (!ExpectInt(second, tok, true)) { return; };
+			if (tok.val == "<") {
+			    exp = new LessThan((TypedExpression<int>)exp, (TypedExpression<int>)second);
+			} else if (tok.val == ">") {
+			    exp = new GreaterThan((TypedExpression<int>)exp, (TypedExpression<int>)second); 
+			} else if (tok.val == "<=") {
+			    exp = new LessThanOrEqual((TypedExpression<int>)exp, (TypedExpression<int>)second); 
+			} else if (tok.val == ">=") {
+			    exp = new GreaterThanOrEqual((TypedExpression<int>)exp, (TypedExpression<int>)second); 
+			} else if (tok.val == "==") {
+			    exp = new Equal((TypedExpression<int>)exp, (TypedExpression<int>)second); 
+			} else if (tok.val == "!=") {
+			    exp = new NotEqual((TypedExpression<int>)exp, (TypedExpression<int>)second); 
+			}
+			
 		}
 	}
 
-	void BitOr(ref exp as Expression) {
-		second as Expression 
-		BitXor(exp);
+	void BitOr(out Expression exp) {
+		Expression second; 
+		BitXor(out exp);
 		while (la.kind == 35) {
 			Get();
-			tok = t 
-			BitXor(second);
-			return unless ExpectInt(exp, tok, false) 
-			return unless ExpectInt(second, tok, true) 
-			exp = BitBinaryOp(exp, second, BitBinaryOp.Or) 
+			Token tok = t; 
+			BitXor(out second);
+			if (!ExpectInt(exp, tok, false)) { return; } 
+			if (!ExpectInt(second, tok, true)) { return; } 
+			exp = new BitwiseOr((TypedExpression<int>)exp, (TypedExpression<int>)second); 
 		}
 	}
 
-	void BitXor(ref exp as Expression) {
-		second as Expression 
-		BitAnd(exp);
+	void BitXor(out Expression exp) {
+		Expression second; 
+		BitAnd(out exp);
 		while (la.kind == 36) {
 			Get();
-			tok = t 
-			BitAnd(second);
-			return unless ExpectInt(exp, tok, false) 
-			return unless ExpectInt(second, tok, true) 
-			exp = BitBinaryOp(exp, second, BitBinaryOp.Xor) 
+			Token tok = t; 
+			BitAnd(out second);
+			if (!ExpectInt(exp, tok, false)) { return; } 
+			if (!ExpectInt(second, tok, true)) { return; } 
+			exp = new BitwiseXor((TypedExpression<int>)exp, (TypedExpression<int>)second); 
 		}
 	}
 
-	void BitAnd(ref exp as Expression) {
-		second as Expression 
-		BitShift(exp);
+	void BitAnd(out Expression exp) {
+		Expression second; 
+		BitShift(out exp);
 		while (la.kind == 37) {
 			Get();
-			tok = t 
-			BitShift(second);
-			return unless ExpectInt(exp, tok, false) 
-			return unless ExpectInt(second, tok, true) 
-			exp = BitBinaryOp(exp, second, BitBinaryOp.And) 
+			Token tok = t; 
+			BitShift(out second);
+			if (!ExpectInt(exp, tok, false)) { return; } 
+			if (!ExpectInt(second, tok, true)) { return; } 
+			exp = new BitwiseAnd((TypedExpression<int>)exp, (TypedExpression<int>)second); 
 		}
 	}
 
-	void BitShift(ref exp as Expression) {
-		second as Expression
-		op as string 
-		PlusMinus(exp);
+	void BitShift(out Expression exp) {
+		Expression second; 
+		PlusMinus(out exp);
 		while (la.kind == 38 || la.kind == 39) {
 			if (la.kind == 38) {
 				Get();
-				op = BitBinaryOp.ShiftLeft 
 			} else {
 				Get();
-				op = BitBinaryOp.ShiftRight 
 			}
-			tok = t 
-			PlusMinus(second);
-			return unless ExpectInt(exp, tok, false) 
-			return unless ExpectInt(second, tok, true) 
-			exp = BitBinaryOp(exp, second, op)
+			Token tok = t; 
+			PlusMinus(out second);
+			if (!ExpectInt(exp, tok, false)) { return; } 
+			if (!ExpectInt(second, tok, true)) { return; } 
+			if (t.val == "<<") {
+			    exp = new ShiftLeft((TypedExpression<int>)exp, (TypedExpression<int>)second);
+			} else if (t.val == ">>") {
+			    exp = new ShiftRight((TypedExpression<int>)exp, (TypedExpression<int>)second);
+			}
+			
 		}
 	}
 
-	void PlusMinus(ref exp as Expression) {
-		second as Expression 
-		op as string
-		MulDivMod(exp);
+	void PlusMinus(out Expression exp) {
+		Expression second; 
+		MulDivMod(out exp);
 		while (la.kind == 40 || la.kind == 41) {
 			if (la.kind == 40) {
 				Get();
-				op = ArithmeticBinaryOp.Plus 
 			} else {
 				Get();
-				op = ArithmeticBinaryOp.Minus 
 			}
-			tok = t 
-			MulDivMod(second);
-			return unless ExpectInt(exp, tok, false) 
-			return unless ExpectInt(second, tok, true) 
-			exp = ArithmeticBinaryOp(exp, second, op) 
+			Token tok = t; 
+			MulDivMod(out second);
+			if (!ExpectInt(exp, tok, false)) { return; } 
+			if (!ExpectInt(second, tok, true)) { return; } 
+			if (t.val == "+") {
+			    exp = new Plus((TypedExpression<int>)exp, (TypedExpression<int>)second);
+			} else if (t.val == "-") {
+			    exp = new Minus((TypedExpression<int>)exp, (TypedExpression<int>)second);
+			}
+			 
 		}
 	}
 
-	void MulDivMod(ref exp as Expression) {
-		second as Expression 
-		UnaryOperator(exp);
+	void MulDivMod(out Expression exp) {
+		Expression second; 
+		UnaryOperator(out exp);
 		while (la.kind == 42 || la.kind == 43 || la.kind == 44) {
 			if (la.kind == 42) {
 				Get();
-				op = ArithmeticBinaryOp.Multiplication 
 			} else if (la.kind == 43) {
 				Get();
-				op = ArithmeticBinaryOp.Division 
 			} else {
 				Get();
-				op = ArithmeticBinaryOp.Modulo 
 			}
-			tok = t 
-			UnaryOperator(second);
-			return unless ExpectInt(exp, tok, false) 
-			return unless ExpectInt(second, tok, true) 
-			exp = ArithmeticBinaryOp(exp, second, op) 
+			Token tok = t; 
+			UnaryOperator(out second);
+			if (!ExpectInt(exp, tok, false)) { return; } 
+			if (!ExpectInt(second, tok, true)) { return; } 
+			if (t.val == "*") {
+			    exp = new Multiplication((TypedExpression<int>)exp, (TypedExpression<int>)second);
+			} else if (t.val == "/") {
+			    exp = new Division((TypedExpression<int>)exp, (TypedExpression<int>)second);
+			} else if (t.val == "%") {
+			    exp = new Modulo((TypedExpression<int>)exp, (TypedExpression<int>)second);
+			}
+			
 		}
 	}
 
-	void UnaryOperator(ref exp as Expression) {
-		op as string = null 
+	void UnaryOperator(out Expression exp) {
+		Token tok = null; string op = null; 
 		if (la.kind == 41 || la.kind == 45 || la.kind == 46) {
 			if (la.kind == 41) {
 				Get();
-				op = t.val 
 			} else if (la.kind == 45) {
 				Get();
-				op = t.val 
 			} else {
 				Get();
-				op = t.val 
-				tok = t 
+				tok = t; op = t.val; 
 			}
 		}
-		Terminal(exp);
-		if op in ('-','~'): 
-		return unless ExpectInt(exp, tok, true)
-		exp = IntUnaryOp(exp, op)
-		elif op == 'not':
-			return unless ExpectBool(exp, tok, true)
-			exp = NotUnaryOp(exp) 
+		Terminal(out exp);
+		if (op == "-") {
+		if (!ExpectInt(exp, tok, true)) { return; }
+		exp = new UnaryMinus((TypedExpression<int>)exp);
+		} else if (op == "~") {
+			if (!ExpectInt((TypedExpression<int>)exp, tok, true)) { return; }
+			exp = new OnesComplement((TypedExpression<int>)exp);
+		} else if (op == "not") {
+			if (!ExpectBool(exp, tok, true)) { return; }
+			exp = new Not((TypedExpression<bool>)exp);
+		}
+		
 	}
 
-	void Terminal(ref exp as Expression) {
+	void Terminal(out Expression exp) {
+		exp = null; 
 		if (la.kind == 1) {
 			Get();
-			exp = Variable(t.val) 
-			if not SymbolTable.IsInScope(t.val) and not CompileOptions.BookVersion:
-				errors.SemErr(t.line, t.col, "Undeclared variable '${t.val}'") 
+			exp = new Variable(t.val);
+			if (!SymbolTable.IsInScope(t.val) && !CompileOptions.BookVersion) {
+				errors.SemErr(t.line, t.col, string.Format("Undeclared variable '{0}'", t.val)); 
+			}
+			
 		} else if (la.kind == 2) {
 			Get();
-			exp = Number(int.Parse(t.val)) 
+			exp = new Number(int.Parse(t.val)); 
 		} else if (la.kind == 47) {
 			Get();
-			exp = Bool(true) 
+			exp = new Bool(true); 
 		} else if (la.kind == 48) {
 			Get();
-			exp = Bool(false) 
+			exp = new Bool(false); 
 		} else if (la.kind == 6) {
 			Get();
-			Expr(exp);
+			Expr(out exp);
 			Expect(9);
 		} else SynErr(56);
 	}

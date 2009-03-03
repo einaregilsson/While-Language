@@ -89,7 +89,7 @@ namespace While.Parsing {
             }
         }
 
-        private void ExpectBool(Expression exp, Token t, bool isRightHandSide) {
+        private bool ExpectBool(Expression exp, Token t, bool isRightHandSide) {
 	        if (!(exp is TypedExpression<bool>)) {
 			    errors.SemErr(t.line, t.col, string.Format("'{0}' expects a boolean expression on its {1} side", t.val, isRightHandSide ? "right" : "left"));
 		        return false;
@@ -97,7 +97,7 @@ namespace While.Parsing {
 	        return true;
         }
 
-        private void ExpectInt(Expression exp, Token t, bool isRightHandSide) {
+        private bool ExpectInt(Expression exp, Token t, bool isRightHandSide) {
 	        if (!(exp is TypedExpression<int>)) {
 			    errors.SemErr(t.line, t.col, string.Format("'{0}' expects an integer expression on its {1} side", t.val, isRightHandSide ? "right" : "left"));
 		        return false;
@@ -121,6 +121,9 @@ namespace While.Parsing {
             }
         }
 
+        private SymbolTable SymbolTable {
+            get { return While.AST.WhileProgram.SymbolTable; }
+        }
         private bool IsStartOfResultArg() {
 	        Token t = scanner.Peek();
 	        scanner.ResetPeek();
@@ -144,7 +147,7 @@ namespace While.Parsing {
         public void SynErr(int line, int col, int n) {
             string s;
             s = GetErrorMessage(n);
-            if (n == null) {
+            if (s == null) {
                 s = "error " + n;
             }
             errorStream.WriteLine(errMsgFormat, line, col, s);

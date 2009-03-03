@@ -26,6 +26,7 @@ using While;
 using While.AST;
 using While.AST.Expressions;
 using While.AST.Sequences;
+using While.Parsing;
 using System.Reflection.Emit;
 using System.Collections.Generic;
 using System.Text;
@@ -128,7 +129,7 @@ namespace While.AST.Statements {
             //Nop only emitted in debug build, otherwise nothing is emitted
         }
     }
-    public class Token { public int line, col;}
+
     public class Call : Statement {
 
         private string _name;

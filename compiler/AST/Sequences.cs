@@ -49,7 +49,7 @@ namespace While.AST.Sequences {
         }
     }
 
-    public class StatementSequence : Node{
+    public class StatementSequence : Statement{
 
         public override string ToString() {
             return Join(this, ";\n");
@@ -73,10 +73,8 @@ namespace While.AST.Sequences {
     }
 
     public class VariableSequence : Node {
-        public VariableSequence(List<Variable> variables) {
-            foreach (Variable var in variables) {
-                AddChild(var);
-            }
+        public void AddVariable(Variable v) {
+            AddChild(v);
         }
         public override void Compile(ILGenerator il) {
             return; //Do nothing

@@ -23,6 +23,7 @@
  * $Revision$
  */
 using While;
+using While.Parsing;
 using System;
 using System.Diagnostics.SymbolStore;
 using System.Reflection.Emit;
@@ -89,7 +90,11 @@ namespace While.AST {
         protected void AddChild(Node child) {
             _children.Add(child);
         }
-        
+
+        public void AddSequencePoint(SequencePoint seq) {
+            _sequencePoints.Add(seq);
+        }
+
         public void AddSequencePoint(Token t) {
             _sequencePoints.Add(new SequencePoint(t.line, t.col, t.line, t.col + t.val.Length));
         }
