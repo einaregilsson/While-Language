@@ -70,7 +70,7 @@ public partial class Scanner {
 
 
 	bool Comment0() {
-		int level = 1, pos0 = pos, line0 = line, col0 = col;
+		int level = 1, line0 = line;
 		NextCh();
 			for(;;) {
 				if (ch == 10) {

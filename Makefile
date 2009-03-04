@@ -3,8 +3,8 @@ all: wc plugins
 
 wc:
 	@echo Compiling While compiler...
-	mkdir -p bin
-	rm -f bin/*
+	@mkdir -p bin
+	@rm -f bin/*
 	gmcs /t:exe /out:bin/wc.exe /reference:lib/nunit.framework.dll /recurse:compiler/*.cs
 	@echo Type \'mono bin/wc.exe\' to start the compiler
 
@@ -13,4 +13,4 @@ plugins: wc
 
 clean:
 	@echo Cleaning bin folder...
-	rm -r -f bin
+	@rm -r -f bin

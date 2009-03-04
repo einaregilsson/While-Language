@@ -1,7 +1,12 @@
-
 Microsoft Visual Studio Solution File, Format Version 9.00
 # Visual Studio 2005
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WhileCompiler", "compiler\WhileCompiler.csproj", "{FC3B3989-9516-491F-BCA6-F124CF0A0770}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{D1E1005A-A3CB-4D01-B8F0-2FDEC4390C68}"
+	ProjectSection(SolutionItems) = preProject
+		make.bat = make.bat
+		Makefile = Makefile
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
