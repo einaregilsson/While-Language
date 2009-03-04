@@ -16,7 +16,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>..\bin\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -24,7 +24,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
+    <OutputPath>..\bin\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -50,6 +50,7 @@
     <Compile Include="AST\WhileProgram.cs" />
     <Compile Include="AST\Statements.cs" />
     <Compile Include="Environment.cs" />
+    <Compile Include="ICompilerPlugin.cs" />
     <Compile Include="Parsing\Parser.cs" />
     <Compile Include="Parsing\Parser.Generated.cs">
       <DependentUpon>Parser.cs</DependentUpon>
@@ -58,6 +59,7 @@
     <Compile Include="Parsing\Scanner.Generated.cs">
       <DependentUpon>Scanner.cs</DependentUpon>
     </Compile>
+    <Compile Include="PluginLoader.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="SymbolTable.cs">
       <SubType>Code</SubType>

@@ -145,7 +145,12 @@ namespace While.AST {
             if (visitor.VisitParentBeforeChildren) {
                 visitor.VisitNode(this);
             }
-            foreach (Node child in ChildNodes) {
+            for (int i = 0; i < ChildNodes.Count; i++) {
+                //In case it's been modified
+                if (i == ChildNodes.Count) {
+                    break;
+                }
+                Node child = ChildNodes[i];
                 if (child != null) {
                     child.Accept(visitor);
                 }

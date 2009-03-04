@@ -79,7 +79,17 @@ namespace While {
                     return 1;
                 }
                 WhileProgram.SymbolTable.Clear();
+                PluginLoader pluginLoader = new PluginLoader();
+                pluginLoader.Load(options.Plugins);
+                
+                foreach (ICompilerPlugin plugin in pluginLoader.LoadedPlugins) {
+                    Console.WriteLine("Executing the '{0}' plugin...", plugin.Name);
+                    plugin.ProcessSyntaxTree(WhileProgram.Instance);
+                }
+
                 WhileProgram.Instance.Compile(options.OutputFilename);
+                Console.WriteLine();
+                Console.WriteLine("Compiled program to '{0}'", options.OutputFilename);
                 return 0;
             } catch (Exception ex) {
                 Console.Error.WriteLine("ERROR: " + ex.Message);

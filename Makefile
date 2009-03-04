@@ -10,6 +10,10 @@ wc:
 
 plugins: wc 
 	@echo Compiling example plugin...
+	@mkdir -p bin/plugins
+	@rm -f bin/plugins/*
+	gmcs /t:libary /out:bin/plugins/ExamplePlugins.dll /reference:bin/wc.exe plugins/FoldConstantExpressions.cs
+	@echo Compiled example plugin, run compiler with '--plugins=constexp' to use it.
 
 clean:
 	@echo Cleaning bin folder...
