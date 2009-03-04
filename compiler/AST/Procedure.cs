@@ -1,6 +1,6 @@
 /*
  * While Compiler
- * http://code.google.com/p/while-language/
+ * http://while-language.googlecode.com
  *
  * Copyright (C) 2009 Einar Egilsson [einar@einaregilsson.com]
  *
@@ -27,8 +27,8 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 using While.AST.Expressions;
-using While.AST.Statements;
 using While.AST.Sequences;
+using While.AST.Statements;
 
 namespace While.AST {
 
@@ -37,6 +37,13 @@ namespace While.AST {
     /// 0-1 result argument that must be the last one.
     /// </summary>
     public class Procedure : Node {
+
+        public Procedure(string name, VariableSequence valArgs, Variable resultArg, StatementSequence statements) {
+            AddChild(valArgs);
+            AddChild(resultArg);
+            AddChild(statements);
+            _name = name;
+        }
 
         public VariableSequence ValueArguments {
             get { return (VariableSequence)this[0]; }
@@ -72,15 +79,6 @@ namespace While.AST {
             get { return ResultArgument != null; }
         }
 
-        public Procedure(string name, VariableSequence valArgs, Variable resultArg, StatementSequence statements) {
-            AddChild(valArgs);
-            AddChild(resultArg);
-            AddChild(statements);
-            _name = name;
-        }
-
-
-
         public override void Compile(ILGenerator il) {
             foreach (Variable arg in ValueArguments) {
                 SymbolTable.DefineArgument(arg.Name);
@@ -102,15 +100,13 @@ namespace While.AST {
         /// dependencies between methods.
         /// </summary>
         public MethodBuilder CompileSignature(ModuleBuilder module) {
-            int argCount = ValueArguments.ChildNodes.Count;
-            if (HasResultArgument) {
-                argCount++;
-            }
-            Type[] argTypes = new Type[argCount];
+
+            Type[] argTypes = new Type[ArgumentCount];
 
             for (int i = 0; i < argTypes.Length; i++) {
                 argTypes[i] = typeof(int);
             }
+
             if (HasResultArgument) {
                 argTypes[argTypes.Length - 1] = typeof(int).MakeByRefType();
             }

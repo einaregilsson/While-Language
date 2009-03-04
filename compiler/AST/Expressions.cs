@@ -1,6 +1,6 @@
 /*
  * While Compiler
- * http://code.google.com/p/while-language/
+ * http://while-language.googlecode.com
  *
  * Copyright (C) 2009 Einar Egilsson [einar@einaregilsson.com]
  *
@@ -23,18 +23,14 @@
  * $Revision$
  */
 using System;
+using System.Reflection.Emit;
 using While;
 using While.AST;
-using System.Reflection.Emit;
-using IntExpression = While.AST.Expressions.TypedExpression<int>;
-using BoolExpression = While.AST.Expressions.TypedExpression<bool>;
 
-// This module contains all expression classes;
-// of the abstract syntax tree. The expressions;
-// have properties to evaluate them at compile;
-// time (except variables). This could be used;
-// to do some constant folding.
-
+// This module contains all expression classes
+// of the abstract syntax tree. The expressions
+// have properties to evaluate them at compile
+// time (except variables). 
 namespace While.AST.Expressions {
 
     public abstract class Expression : Node {
@@ -46,13 +42,14 @@ namespace While.AST.Expressions {
         public abstract T TypedValue { get; }
     }
 
-    public class Bool : BoolExpression {
+    public class Bool : TypedExpression<bool> {
 
         private bool _value;
 
         public Bool(bool value) {
             _value = value;
         }
+
         public override bool TypedValue { get { return _value; } }
 
         public override string ToString() {
@@ -64,14 +61,15 @@ namespace While.AST.Expressions {
         }
     }
 
-    public class Number : IntExpression {
+    public class Number : TypedExpression<int> {
 
         private int _nr;
-        public override int TypedValue { get { return _nr; } }
 
         public Number(int nr) {
             _nr = nr;
         }
+
+        public override int TypedValue { get { return _nr; } }
 
         public override string ToString() {
             return _nr.ToString();
@@ -82,7 +80,11 @@ namespace While.AST.Expressions {
         }
     }
 
-    public class Variable : IntExpression {
+    public class Variable : TypedExpression<int> {
+
+        public Variable(string name) {
+            _name = name;
+        }
 
         private string _name;
         public string Name { get { return _name; } }
@@ -101,10 +103,6 @@ namespace While.AST.Expressions {
 
         public override int TypedValue {
             get { throw new WhileException("Variable {0} cannot be evaluated at compile time", _name); }
-        }
-
-        public Variable(string name) {
-            _name = name;
         }
 
         public override string ToString() {
@@ -133,17 +131,19 @@ namespace While.AST.Expressions {
 
     public abstract class BinaryOp<T, ChildType> : TypedExpression<T> where ChildType : Expression {
 
-        public ChildType Left { get { return (ChildType)this[0]; } }
-        public ChildType Right { get { return (ChildType)this[1]; } }
-        protected OpCode _opCode;
-        protected string _opString;
-
         public BinaryOp(ChildType left, ChildType right, OpCode opCode, string opString) {
             AddChild(left);
             AddChild(right);
             _opCode = opCode;
             _opString = opString;
         }
+
+        protected OpCode _opCode;
+        protected string _opString;
+
+        public ChildType Left { get { return (ChildType)this[0]; } }
+        public ChildType Right { get { return (ChildType)this[1]; } }
+
 
         public override string ToString() {
             return String.Format("({0} {1} {2})", Left, _opString, Right);
@@ -156,73 +156,73 @@ namespace While.AST.Expressions {
         }
     }
 
-    public class Plus : BinaryOp<int, IntExpression> {
-        public Plus(IntExpression left, IntExpression right)
+    public class Plus : BinaryOp<int, TypedExpression<int>> {
+        public Plus(TypedExpression<int> left, TypedExpression<int> right)
             : base(left, right, OpCodes.Add_Ovf, "+") {
         }
 
-        public override int TypedValue { 
-            get { return Left.TypedValue + Right.TypedValue; } 
+        public override int TypedValue {
+            get { return Left.TypedValue + Right.TypedValue; }
         }
     }
 
-    public class Minus : BinaryOp<int, IntExpression> {
-        public Minus(IntExpression left, IntExpression right)
+    public class Minus : BinaryOp<int, TypedExpression<int>> {
+        public Minus(TypedExpression<int> left, TypedExpression<int> right)
             : base(left, right, OpCodes.Sub_Ovf, "-") {
         }
 
-        public override int TypedValue { 
-            get { return Left.TypedValue - Right.TypedValue; } 
+        public override int TypedValue {
+            get { return Left.TypedValue - Right.TypedValue; }
         }
     }
 
-    public class Multiplication : BinaryOp<int, IntExpression> {
-        public Multiplication(IntExpression left, IntExpression right)
+    public class Multiplication : BinaryOp<int, TypedExpression<int>> {
+        public Multiplication(TypedExpression<int> left, TypedExpression<int> right)
             : base(left, right, OpCodes.Mul_Ovf, "*") {
         }
 
-        public override int TypedValue { 
-            get { return Left.TypedValue * Right.TypedValue; } 
+        public override int TypedValue {
+            get { return Left.TypedValue * Right.TypedValue; }
         }
     }
 
-    public class Division : BinaryOp<int, IntExpression> {
-        public Division(IntExpression left, IntExpression right)
+    public class Division : BinaryOp<int, TypedExpression<int>> {
+        public Division(TypedExpression<int> left, TypedExpression<int> right)
             : base(left, right, OpCodes.Div, "/") {
         }
 
-        public override int TypedValue { 
-            get { return Left.TypedValue / Right.TypedValue; } 
+        public override int TypedValue {
+            get { return Left.TypedValue / Right.TypedValue; }
         }
     }
 
-    public class Modulo : BinaryOp<int, IntExpression> {
-        public Modulo(IntExpression left, IntExpression right)
+    public class Modulo : BinaryOp<int, TypedExpression<int>> {
+        public Modulo(TypedExpression<int> left, TypedExpression<int> right)
             : base(left, right, OpCodes.Rem, "%") {
         }
 
-        public override int TypedValue { 
-            get { return Left.TypedValue % Right.TypedValue; } 
+        public override int TypedValue {
+            get { return Left.TypedValue % Right.TypedValue; }
         }
     }
 
-    public class Equal : BinaryOp<bool, IntExpression> {
-        public Equal(IntExpression left, IntExpression right)
+    public class Equal : BinaryOp<bool, TypedExpression<int>> {
+        public Equal(TypedExpression<int> left, TypedExpression<int> right)
             : base(left, right, OpCodes.Ceq, "==") {
         }
 
-        public override bool TypedValue { 
-            get { return Left.TypedValue == Right.TypedValue; } 
+        public override bool TypedValue {
+            get { return Left.TypedValue == Right.TypedValue; }
         }
     }
 
-    public class NotEqual : BinaryOp<bool, IntExpression> {
-        public NotEqual(IntExpression left, IntExpression right)
+    public class NotEqual : BinaryOp<bool, TypedExpression<int>> {
+        public NotEqual(TypedExpression<int> left, TypedExpression<int> right)
             : base(left, right, OpCodes.Nop, "!=") {
         }
 
-        public override bool TypedValue { 
-            get { return Left.TypedValue == Right.TypedValue; } 
+        public override bool TypedValue {
+            get { return Left.TypedValue == Right.TypedValue; }
         }
 
         public override void Compile(ILGenerator il) {
@@ -234,33 +234,33 @@ namespace While.AST.Expressions {
         }
     }
 
-    public class GreaterThan : BinaryOp<bool, IntExpression> {
-        public GreaterThan(IntExpression left, IntExpression right)
+    public class GreaterThan : BinaryOp<bool, TypedExpression<int>> {
+        public GreaterThan(TypedExpression<int> left, TypedExpression<int> right)
             : base(left, right, OpCodes.Cgt, ">") {
         }
 
-        public override bool TypedValue { 
-            get { return Left.TypedValue > Right.TypedValue; } 
+        public override bool TypedValue {
+            get { return Left.TypedValue > Right.TypedValue; }
         }
     }
 
-    public class LessThan : BinaryOp<bool, IntExpression> {
-        public LessThan(IntExpression left, IntExpression right)
+    public class LessThan : BinaryOp<bool, TypedExpression<int>> {
+        public LessThan(TypedExpression<int> left, TypedExpression<int> right)
             : base(left, right, OpCodes.Clt, "<") {
         }
 
-        public override bool TypedValue { 
-            get { return Left.TypedValue < Right.TypedValue; } 
+        public override bool TypedValue {
+            get { return Left.TypedValue < Right.TypedValue; }
         }
     }
 
-    public class GreaterThanOrEqual : BinaryOp<bool, IntExpression> {
-        public GreaterThanOrEqual(IntExpression left, IntExpression right)
+    public class GreaterThanOrEqual : BinaryOp<bool, TypedExpression<int>> {
+        public GreaterThanOrEqual(TypedExpression<int> left, TypedExpression<int> right)
             : base(left, right, OpCodes.Nop, ">=") {
         }
 
-        public override bool TypedValue { 
-            get { return Left.TypedValue >= Right.TypedValue; } 
+        public override bool TypedValue {
+            get { return Left.TypedValue >= Right.TypedValue; }
         }
 
         public override void Compile(ILGenerator il) {
@@ -272,13 +272,13 @@ namespace While.AST.Expressions {
         }
     }
 
-    public class LessThanOrEqual : BinaryOp<bool, IntExpression> {
-        public LessThanOrEqual (IntExpression left, IntExpression right)
+    public class LessThanOrEqual : BinaryOp<bool, TypedExpression<int>> {
+        public LessThanOrEqual(TypedExpression<int> left, TypedExpression<int> right)
             : base(left, right, OpCodes.Nop, "<=") {
         }
 
-        public override bool TypedValue { 
-            get { return Left.TypedValue <= Right.TypedValue; } 
+        public override bool TypedValue {
+            get { return Left.TypedValue <= Right.TypedValue; }
         }
 
         public override void Compile(ILGenerator il) {
@@ -290,99 +290,101 @@ namespace While.AST.Expressions {
         }
     }
 
-    public class BitwiseAnd : BinaryOp<int, IntExpression> {
-        public BitwiseAnd(IntExpression left, IntExpression right)
+    public class BitwiseAnd : BinaryOp<int, TypedExpression<int>> {
+        public BitwiseAnd(TypedExpression<int> left, TypedExpression<int> right)
             : base(left, right, OpCodes.And, "&") {
         }
 
-        public override int TypedValue { 
-            get { return Left.TypedValue & Right.TypedValue; } 
+        public override int TypedValue {
+            get { return Left.TypedValue & Right.TypedValue; }
         }
     }
 
-    public class BitwiseOr : BinaryOp<int, IntExpression> {
-        public BitwiseOr(IntExpression left, IntExpression right)
+    public class BitwiseOr : BinaryOp<int, TypedExpression<int>> {
+        public BitwiseOr(TypedExpression<int> left, TypedExpression<int> right)
             : base(left, right, OpCodes.Or, "|") {
         }
 
-        public override int TypedValue { 
-            get { return Left.TypedValue | Right.TypedValue; } 
+        public override int TypedValue {
+            get { return Left.TypedValue | Right.TypedValue; }
         }
     }
 
-    public class BitwiseXor : BinaryOp<int, IntExpression> {
-        public BitwiseXor(IntExpression left, IntExpression right)
+    public class BitwiseXor : BinaryOp<int, TypedExpression<int>> {
+        public BitwiseXor(TypedExpression<int> left, TypedExpression<int> right)
             : base(left, right, OpCodes.Xor, "^") {
         }
 
-        public override int TypedValue { 
-            get { return Left.TypedValue ^ Right.TypedValue; } 
+        public override int TypedValue {
+            get { return Left.TypedValue ^ Right.TypedValue; }
         }
     }
 
-    public class ShiftLeft : BinaryOp<int, IntExpression> {
-        public ShiftLeft(IntExpression left, IntExpression right)
+    public class ShiftLeft : BinaryOp<int, TypedExpression<int>> {
+        public ShiftLeft(TypedExpression<int> left, TypedExpression<int> right)
             : base(left, right, OpCodes.Shl, "<<") {
         }
 
-        public override int TypedValue { 
-            get { return Left.TypedValue << Right.TypedValue; } 
+        public override int TypedValue {
+            get { return Left.TypedValue << Right.TypedValue; }
         }
     }
 
-    public class ShiftRight : BinaryOp<int, IntExpression> {
-        public ShiftRight(IntExpression left, IntExpression right)
+    public class ShiftRight : BinaryOp<int, TypedExpression<int>> {
+        public ShiftRight(TypedExpression<int> left, TypedExpression<int> right)
             : base(left, right, OpCodes.Shr, ">>") {
         }
 
-        public override int TypedValue { 
-            get { return Left.TypedValue >> Right.TypedValue; } 
+        public override int TypedValue {
+            get { return Left.TypedValue >> Right.TypedValue; }
         }
     }
 
 
-    public class LogicalAnd : BinaryOp<bool, BoolExpression> {
-        public LogicalAnd(BoolExpression left, BoolExpression right)
+    public class LogicalAnd : BinaryOp<bool, TypedExpression<bool>> {
+        public LogicalAnd(TypedExpression<bool> left, TypedExpression<bool> right)
             : base(left, right, OpCodes.And, "&&") {
         }
 
-        public override bool TypedValue { 
-            get { return Left.TypedValue && Right.TypedValue; } 
+        public override bool TypedValue {
+            get { return Left.TypedValue && Right.TypedValue; }
         }
     }
 
-    public class LogicalOr : BinaryOp<bool, BoolExpression> {
-        public LogicalOr(BoolExpression left, BoolExpression right)
+    public class LogicalOr : BinaryOp<bool, TypedExpression<bool>> {
+        public LogicalOr(TypedExpression<bool> left, TypedExpression<bool> right)
             : base(left, right, OpCodes.Or, "||") {
         }
 
-        public override bool TypedValue { 
-            get { return Left.TypedValue || Right.TypedValue; } 
+        public override bool TypedValue {
+            get { return Left.TypedValue || Right.TypedValue; }
         }
     }
-    
-    public class LogicalXor : BinaryOp<bool, BoolExpression> {
-        public LogicalXor(BoolExpression left, BoolExpression right)
+
+    public class LogicalXor : BinaryOp<bool, TypedExpression<bool>> {
+        public LogicalXor(TypedExpression<bool> left, TypedExpression<bool> right)
             : base(left, right, OpCodes.Xor, "^") {
         }
 
-        public override bool TypedValue { 
-            get { return Left.TypedValue ^ Right.TypedValue; } 
+        public override bool TypedValue {
+            get { return Left.TypedValue ^ Right.TypedValue; }
         }
     }
 
-    public abstract class UnaryOp<T, ExpressionType> : TypedExpression<T> where ExpressionType : Expression{
-        public ExpressionType Expression {
-            get { return (ExpressionType)this[0]; }
-            set { this[0] = value; }
-        }
+    public abstract class UnaryOp<T, ExpressionType> : TypedExpression<T> where ExpressionType : Expression {
 
-        protected OpCode _opCode;
-        protected string _opString;
         public UnaryOp(ExpressionType exp, OpCode opCode, string opString) {
             AddChild(exp);
             _opCode = opCode;
             _opString = opString;
+        }
+
+        protected OpCode _opCode;
+        protected string _opString;
+
+        public ExpressionType Expression {
+            get { return (ExpressionType)this[0]; }
+            set { this[0] = value; }
         }
 
         public override void Compile(ILGenerator il) {
@@ -395,36 +397,36 @@ namespace While.AST.Expressions {
         }
     }
 
-    public class UnaryMinus : UnaryOp<int, IntExpression> {
-        public UnaryMinus(IntExpression exp)
+    public class UnaryMinus : UnaryOp<int, TypedExpression<int>> {
+        public UnaryMinus(TypedExpression<int> exp)
             : base(exp, OpCodes.Neg, "-") {
         }
 
-        public override int TypedValue { 
-            get { return -Expression.TypedValue; } 
+        public override int TypedValue {
+            get { return -Expression.TypedValue; }
         }
     }
 
-    public class OnesComplement : UnaryOp<int, IntExpression> {
-        public OnesComplement(IntExpression exp)
+    public class OnesComplement : UnaryOp<int, TypedExpression<int>> {
+        public OnesComplement(TypedExpression<int> exp)
             : base(exp, OpCodes.Not, "~") {
         }
 
-        public override int TypedValue { 
-            get { return ~Expression.TypedValue; } 
+        public override int TypedValue {
+            get { return ~Expression.TypedValue; }
         }
     }
 
-    public class Not : UnaryOp<bool, BoolExpression> {
-        
-        public Not(BoolExpression exp)
+    public class Not : UnaryOp<bool, TypedExpression<bool>> {
+
+        public Not(TypedExpression<bool> exp)
             : base(exp, OpCodes.Not, "!") {
         }
 
-        public override bool TypedValue { 
-            get { return !Expression.TypedValue; } 
+        public override bool TypedValue {
+            get { return !Expression.TypedValue; }
         }
-        
+
         public override void Compile(ILGenerator il) {
             Expression.Compile(il);
             il.Emit(OpCodes.Ldc_I4_0);

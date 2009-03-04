@@ -1,6 +1,6 @@
 /*
  * While Compiler
- * http://code.google.com/p/while-language/
+ * http://while-language.googlecode.com
  *
  * Copyright (C) 2009 Einar Egilsson [einar@einaregilsson.com]
  *

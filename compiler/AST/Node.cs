@@ -1,6 +1,6 @@
 /*
  * While Compiler
- * http://code.google.com/p/while-language/
+ * http://while-language.googlecode.com
  *
  * Copyright (C) 2009 Einar Egilsson [einar@einaregilsson.com]
  *
@@ -22,21 +22,21 @@
  * $Author$
  * $Revision$
  */
-using While;
-using While.Parsing;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.SymbolStore;
 using System.Reflection.Emit;
-using System.Collections.Generic;
+using While;
+using While.Parsing;
 
 namespace While.AST {
 
     /// <summary>
-    /// Class to keep track of what the debugger should highlight in the source file
+    /// Utility class to keep track of what the debugger should highlight in the source file
     /// when debugging.
     /// </summary>
     public class SequencePoint {
-        
+
         public SequencePoint(int startLine, int startCol, int endLine, int endCol) {
             _startLine = startLine;
             _startCol = startCol;
@@ -58,42 +58,50 @@ namespace While.AST {
     /// </summary>
     public abstract class Node : IEnumerable<Node> {
 
-
-        public abstract void Compile(ILGenerator il);
         private List<Node> _children = new List<Node>();
         public List<Node> ChildNodes { get { return _children; } }
-        protected static SymbolTable _symTable = new SymbolTable();
+
+        private static SymbolTable _symTable = new SymbolTable();
         public static SymbolTable SymbolTable { get { return _symTable; } }
-        protected static ISymbolDocumentWriter _debugWriter;
-        protected List<SequencePoint> _sequencePoints = new List<SequencePoint>();
-        protected static ModuleBuilder _module;
-        [ThreadStatic] protected static CommandLineOptions _options;
-        
+
+        private static ISymbolDocumentWriter _debugWriter;
         public static ISymbolDocumentWriter DebugWriter {
             get { return _debugWriter; }
             set { _debugWriter = value; }
         }
 
-        public static CommandLineOptions Options{
-            get { return _options; }
-            set { _options = value; }
-        }
+        private List<SequencePoint> _sequencePoints = new List<SequencePoint>();
+        public List<SequencePoint> SequencePoints { get { return _sequencePoints; } }
 
+        private static ModuleBuilder _module;
         public static ModuleBuilder Module {
             get { return _module; }
             set { _module = value; }
         }
 
-        protected void MarkSequencePoint(ILGenerator il, SequencePoint seq) {
-            il.MarkSequencePoint(_debugWriter, seq.StartLine, seq.StartCol, seq.EndLine, seq.EndCol);
+        [ThreadStatic]
+        protected static CommandLineOptions _options;
+        public static CommandLineOptions Options {
+            get { return _options; }
+            set { _options = value; }
         }
+
+
+        /// <summary>
+        /// All childnodes override this to compile themselves
+        /// </summary>
+        public abstract void Compile(ILGenerator il);
 
         public Node this[int index] {
             get { return _children[index]; }
             set { _children[index] = value; }
         }
 
-        protected void AddChild(Node child) {
+        public void MarkSequencePoint(ILGenerator il, SequencePoint seq) {
+            il.MarkSequencePoint(_debugWriter, seq.StartLine, seq.StartCol, seq.EndLine, seq.EndCol);
+        }
+
+        public void AddChild(Node child) {
             _children.Add(child);
         }
 
@@ -137,6 +145,5 @@ namespace While.AST {
             }
             return string.Join(sep, temp.ToArray());
         }
-
     }
 }

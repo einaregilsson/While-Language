@@ -1,8 +1,16 @@
 #Build script for the While compiler, see http://while-language.googlecode.com
+all: wc plugins
+
 wc:
-	@echo Compiling While compiler
-	gmcs /t:exe /out:bin/wc.exe /reference:bin/nunit.framework.dll /recurse:compiler/*.cs
+	@echo Compiling While compiler...
+	mkdir -p bin
+	rm -f bin/*
+	gmcs /t:exe /out:bin/wc.exe /reference:lib/nunit.framework.dll /recurse:compiler/*.cs
 	@echo Type \'mono bin/wc.exe\' to start the compiler
 
 plugins: wc 
-	@echo TODO: Create plugins
+	@echo Compiling example plugin...
+
+clean:
+	@echo Cleaning bin folder...
+	rm -r -f bin

@@ -1,6 +1,6 @@
 /*
  * While Compiler
- * http://code.google.com/p/while-language/
+ * http://while-language.googlecode.com
  *
  * Copyright (C) 2009 Einar Egilsson [einar@einaregilsson.com]
  *
@@ -33,29 +33,6 @@ namespace While {
     /// </summary>
     public class CommandLineOptions {
 
-        private bool _debug = false;
-        public bool Debug { get { return _debug; } }
-
-        private string _outputFile = "";
-        public string OutputFilename { get { return _outputFile; } }
-
-        private string _inputFile = "";
-        public string InputFilename { get { return _inputFile; } }
-
-        private bool _readStdIn = false;
-        public bool ReadStdIn { get { return _readStdIn; } }
-
-        private bool _empty = false;
-        public bool Empty { get { return _empty; } }
-
-        private bool _help = false;
-        public bool Help { get { return _help; } }
-
-        private bool _bookVersion = true;
-        public bool BookVersion {
-            get { return _bookVersion; }
-            set { _bookVersion = value; }
-        }
         public CommandLineOptions(string[] args) {
             if (args.Length == 0) {
                 _empty = true;
@@ -91,6 +68,31 @@ namespace While {
                 _outputFile += ".exe";
             }
         }
+
+        private bool _debug = false;
+        public bool Debug { get { return _debug; } }
+
+        private string _outputFile = "";
+        public string OutputFilename { get { return _outputFile; } }
+
+        private string _inputFile = "";
+        public string InputFilename { get { return _inputFile; } }
+
+        private bool _readStdIn = false;
+        public bool ReadStdIn { get { return _readStdIn; } }
+
+        private bool _empty = false;
+        public bool Empty { get { return _empty; } }
+
+        private bool _help = false;
+        public bool Help { get { return _help; } }
+
+        private bool _bookVersion = true;
+        public bool BookVersion {
+            get { return _bookVersion; }
+            set { _bookVersion = value; }
+        }
+
 
         public static void Print() {
             Console.Error.WriteLine(@"

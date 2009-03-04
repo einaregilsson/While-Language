@@ -1,6 +1,6 @@
 /*
  * While Compiler
- * http://code.google.com/p/while-language/
+ * http://while-language.googlecode.com
  *
  * Copyright (C) 2009 Einar Egilsson [einar@einaregilsson.com]
  *
@@ -28,8 +28,8 @@ using System.Collections.Generic;
 namespace While {
 
     /// <summary>
-    ///Symbol table to keep track of variables && their scope.
-    ///Used both in the parsing phase, && again in the compilation phase.
+    ///Symbol table to keep track of variables and their scope.
+    ///Used both in the parsing phase, and again in the compilation phase.
     /// </summary>
     public class SymbolTable {
 

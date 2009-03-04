@@ -1,6 +1,6 @@
 ﻿/*
  * While Compiler
- * http://code.google.com/p/while-language/
+ * http://while-language.googlecode.com
  *
  * Copyright (C) 2009 Einar Egilsson [einar@einaregilsson.com]
  *
@@ -46,4 +46,4 @@ using System.Runtime.InteropServices;
 //
 // You can specify all values by your own || you can build default build && revision
 // numbers with the '*' character (the default)) {
-[assembly: AssemblyVersion("0.9.*")]
+[assembly: AssemblyVersion("1.0.0")]

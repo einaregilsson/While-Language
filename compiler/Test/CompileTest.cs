@@ -1,6 +1,6 @@
 /*
  * While Compiler
- * http://code.google.com/p/while-language/
+ * http://while-language.googlecode.com
  *
  * Copyright (C) 2009 Einar Egilsson [einar@einaregilsson.com]
  *
@@ -22,15 +22,12 @@
  * $Author$
  * $Revision$
  */
-using While;
-using While.AST;
-using While.Parsing;
-using NUnit.Framework;
-using System.IO;
 using System.Diagnostics;
+using System.IO;
+using NUnit.Framework;
+using While.AST;
 
 namespace While.Test {
-
 
     [TestFixture]
     public class CompileTest : WhileTest {

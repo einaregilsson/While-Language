@@ -1,6 +1,6 @@
 ﻿/*
  * While Compiler
- * http://code.google.com/p/while-language/
+ * http://while-language.googlecode.com
  *
  * Copyright (C) 2009 Einar Egilsson [einar@einaregilsson.com]
  *
@@ -24,9 +24,9 @@
  */
 using System;
 using System.IO;
+using System.Reflection;
 using While.AST;
 using While.Parsing;
-
 
 namespace While {
     /// <summary>
@@ -39,42 +39,52 @@ namespace While {
     ///	Program author: Einar Egilsson (einar@einaregilsson.com)
     /// </summary>
     public class Program {
+        
         public static int Main(string[] args) {
+            try {
+                Version v = Assembly.GetExecutingAssembly().GetName().Version;
+                string version = v.Major + "." + v.Minor + "." + v.Build;
+                Console.WriteLine("While.NET Compiler v" + version);
+                Console.WriteLine("Copyright (C) Einar Egilsson 2009. All rights reserved.");
+                Console.WriteLine();
 
-            Console.WriteLine("While.NET Compiler v0.9");
-            Console.WriteLine("Copyright (C) Einar Egilsson 2009. All rights reserved.");
+                CommandLineOptions options = new CommandLineOptions(args);
+                if (options.Empty) {
+                    System.Console.Error.WriteLine("ERROR: No inputs specified");
+                    return 1;
+                } else if (options.Help) {
+                    System.Console.Error.WriteLine("Usage: wc.exe [options] filename");
+                    CommandLineOptions.Print();
+                    return 2;
+                } else if (!options.ReadStdIn && !File.Exists(options.InputFilename)) {
+                    System.Console.Error.WriteLine("ERROR: File '{0}' does not exist", options.InputFilename);
+                    return 3;
+                }
 
-            CommandLineOptions options = new CommandLineOptions(args);
-            if (options.Empty) {
-                System.Console.Error.WriteLine("ERROR: No inputs specified");
+                Parser parser;
+                if (options.ReadStdIn) {
+                    //Passing the StdIn stream directly to the scanner doesn't work well
+                    //so we do it this way instead
+                    string source = Console.In.ReadToEnd();
+                    StreamWriter writer = new StreamWriter(new MemoryStream());
+                    writer.Write(source);
+                    writer.Flush();
+                    writer.BaseStream.Seek(0, SeekOrigin.Begin);
+                    parser = new Parser(new Scanner(writer.BaseStream), options);
+                } else {
+                    parser = new Parser(new Scanner(new FileStream(options.InputFilename, FileMode.Open)), options);
+                }
+                parser.Parse();
+                if (parser.errors.count > 0) {
+                    return 1;
+                }
+                WhileProgram.SymbolTable.Clear();
+                WhileProgram.Instance.Compile(options.OutputFilename);
+                return 0;
+            } catch (Exception ex) {
+                Console.Error.WriteLine("ERROR: " + ex.Message);
                 return 1;
-            } else if (options.Help) {
-                System.Console.Error.WriteLine("Usage: wc.exe [options] filename");
-                CommandLineOptions.Print();
-                return 2;
-            } else if (!options.ReadStdIn && !File.Exists(options.InputFilename)) {
-                System.Console.Error.WriteLine("ERROR: File '${CompileOptions.InputFilename}' does not exist");
-                return 3;
             }
-
-            Parser p;
-            if (options.ReadStdIn) {
-                string source = System.Console.In.ReadToEnd();
-                StreamWriter writer = new StreamWriter(new MemoryStream());
-                writer.Write(source);
-                writer.Flush();
-                writer.BaseStream.Seek(0, SeekOrigin.Begin);
-                p = new Parser(new Scanner(writer.BaseStream), options);
-            } else {
-                p = new Parser(new Scanner(new FileStream(options.InputFilename, FileMode.Open)), options);
-            }
-            p.Parse();
-            if (p.errors.count > 0) {
-                return 1;
-            }
-            WhileProgram.SymbolTable.Clear();
-            WhileProgram.Instance.Compile(options.OutputFilename);
-            return 0;
         }
     }
 }

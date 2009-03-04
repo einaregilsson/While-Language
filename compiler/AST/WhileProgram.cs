@@ -1,6 +1,6 @@
 /*
  * While Compiler
- * http://code.google.com/p/while-language/
+ * http://while-language.googlecode.com
  *
  * Copyright (C) 2009 Einar Egilsson [einar@einaregilsson.com]
  *
@@ -22,25 +22,29 @@
  * $Author$
  * $Revision$
  */
-using While;
-using While.AST.Statements;
-using While.AST.Sequences;
 using System;
+using System.Collections.Generic;
+using System.Diagnostics.SymbolStore;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Diagnostics.SymbolStore;
 using System.Threading;
-using System.Collections.Generic;
+using While;
+using While.AST.Sequences;
+using While.AST.Statements;
 
 
 namespace While.AST {
 
     /// <summary>
     ///	Root node in the abstract syntax tree. Has a static property, .Instance;
-    ///	that always contains the last parsed tree. This way all nodes can access;
-    /// the tree root whenever they need.
+    ///	that always contains the last parsed tree. 
     /// </summary>
     public class WhileProgram : Node {
+
+        public WhileProgram(ProcedureSequence procs, StatementSequence stmts) {
+            AddChild(procs);
+            AddChild(stmts);
+        }
 
         public ProcedureSequence Procedures {
             get { return (ProcedureSequence)this[0]; }
@@ -52,15 +56,10 @@ namespace While.AST {
             set { this[1] = value; }
         }
 
-        private static WhileProgram _tree;
+        private static WhileProgram _instance;
         public static WhileProgram Instance {
-            get { return _tree; }
-            set { _tree = value; }
-        }
-
-        public WhileProgram(ProcedureSequence procs, StatementSequence stmts) {
-            AddChild(procs);
-            AddChild(stmts);
+            get { return _instance; }
+            set { _instance = value; }
         }
 
         public override string ToString() {
@@ -68,6 +67,7 @@ namespace While.AST {
         }
 
         public override void Compile(ILGenerator il) {
+            //do nothing
         }
 
         public void Compile(string filename) {
@@ -87,12 +87,12 @@ namespace While.AST {
                 SymbolTable.PushScope();
             }
 
-            if (_sequencePoints.Count > 0) { //Make possible to start on "begin" statement
+            if (SequencePoints.Count > 0) { //Make possible to start on "begin" statement
                 EmitDebugInfo(il, 0, true);
             }
 
             Statements.Compile(il);
-            if (_sequencePoints.Count > 0) { //Make possible to end on "end" statement
+            if (SequencePoints.Count > 0) { //Make possible to end on "end" statement
                 EmitDebugInfo(il, 1, true);
             }
             il.Emit(OpCodes.Ret);

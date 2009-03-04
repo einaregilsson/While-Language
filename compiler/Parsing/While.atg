@@ -1,6 +1,6 @@
 /*
  * While Compiler
- * http://code.google.com/p/while-language/
+ * http://while-language.googlecode.com
  *
  * Copyright (C) 2009 Einar Egilsson [einar@einaregilsson.com]
  *
@@ -29,8 +29,6 @@ using While.AST.Statements;
 using System.Collections.Generic;
 
 COMPILER Program
-	
-
 
 CHARACTERS
   letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_".
@@ -52,13 +50,13 @@ IGNORE cr + lf + tab
 PRODUCTIONS
 
 Program<>
-=                                          				(.	StatementSequence statements = null;
-															ProcedureSequence procs = new ProcedureSequence(); 
-															Token startTok = null, endTok = null; .)
+=                                          				(. StatementSequence statements = null;
+														   ProcedureSequence procs = new ProcedureSequence(); 
+														   Token startTok = null, endTok = null; .)
 
    	(
     IF(IsProcProgram())
-    	"begin"											 (.	startTok = t; .)
+    	"begin"											(. startTok = t; .)
     	Proc<procs>
     	{
     		Proc<procs>
@@ -138,7 +136,7 @@ Args<VariableSequence valArgs, out Variable resultArg>
 												v.IsValueArg = true;
 												valArgs.AddVariable(v);
 												if (SymbolTable.IsDeclaredInCurrentScope(t.val)) {
-													errors.SemErr(t.line, t.col, string.Format("Argument '${0}' is already declared in this scope",t.val));
+													errors.SemErr(t.line, t.col, string.Format("Argument '{0}' is already declared in this scope",t.val));
 												} else {
 													SymbolTable.DefineArgument(t.val);
 												}

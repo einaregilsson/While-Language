@@ -136,7 +136,7 @@ public partial class Parser {
 			v.IsValueArg = true;
 			valArgs.AddVariable(v);
 			if (SymbolTable.IsDeclaredInCurrentScope(t.val)) {
-				errors.SemErr(t.line, t.col, string.Format("Argument '${0}' is already declared in this scope",t.val));
+				errors.SemErr(t.line, t.col, string.Format("Argument '{0}' is already declared in this scope",t.val));
 			} else {
 				SymbolTable.DefineArgument(t.val);
 			}

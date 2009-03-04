@@ -1,6 +1,6 @@
 /*
  * While Compiler
- * http://code.google.com/p/while-language/
+ * http://while-language.googlecode.com
  *
  * Copyright (C) 2009 Einar Egilsson [einar@einaregilsson.com]
  *
@@ -27,6 +27,12 @@ using System.Collections.Generic;
 using System.Text;
 
 namespace While {
+    
+    /// <summary>
+    /// Class to abstract the environment so it can be set to Test
+    /// when unit testing. Otherwise calling System.Environment.Exit(1)
+    /// would shut down NUnit.
+    /// </summary>
     internal static class Environment {
 
         private static bool _test = false;

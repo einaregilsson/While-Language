@@ -1,6 +1,6 @@
 /*
  * While Compiler
- * http://code.google.com/p/while-language/
+ * http://while-language.googlecode.com
  *
  * Copyright (C) 2009 Einar Egilsson [einar@einaregilsson.com]
  *
@@ -22,20 +22,18 @@
  * $Author$
  * $Revision$
  */
+using System.IO;
 using While;
 using While.Parsing;
 using NUnit.Framework;
-using System.IO;
 
 namespace While.Test {
-
 
     public abstract class WhileTest {
 
         public WhileTest() {
             global::While.Environment.Test = true;
         }
-
 
         protected string Parse(string src) {
             return Parse(src, new CommandLineOptions(new string[] { }));

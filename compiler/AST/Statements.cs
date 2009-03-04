@@ -1,6 +1,6 @@
 ﻿/*
  * While Compiler
- * http://code.google.com/p/while-language/
+ * http://while-language.googlecode.com
  *
  * Copyright (C) 2009 Einar Egilsson [einar@einaregilsson.com]
  *
@@ -22,17 +22,20 @@
  * $Author$
  * $Revision$
  */
+using System;
+using System.Collections.Generic;
+using System.Reflection;
+using System.Reflection.Emit;
+using System.Text;
 using While;
 using While.AST;
 using While.AST.Expressions;
 using While.AST.Sequences;
 using While.Parsing;
-using System.Reflection.Emit;
-using System.Collections.Generic;
-using System.Text;
-using System.Reflection;
-using System;
 
+// All statement nodes in the AST
+// (Except for StatementSequence which is stored in
+// Sequences.cs)
 namespace While.AST.Statements {
 
     public abstract class Statement : Node {
@@ -41,16 +44,15 @@ namespace While.AST.Statements {
         }
     }
 
-
     public class VariableDeclaration : Statement {
+
+        public VariableDeclaration(Variable var) {
+            AddChild(var);
+        }
 
         public Variable Variable {
             get { return (Variable)this[0]; }
             set { this[0] = value; }
-        }
-
-        public VariableDeclaration(Variable var) {
-            AddChild(var);
         }
 
         public override string ToString() {
@@ -67,11 +69,15 @@ namespace While.AST.Statements {
         }
     }
 
-
     /// <summary>
     /// Assign an integer expression to a variable
     /// </summary>
     public class Assign : Statement {
+
+        public Assign(Variable var, TypedExpression<int> exp) {
+            AddChild(var);
+            AddChild(exp);
+        }
 
         public Variable Variable {
             get { return (Variable)this[0]; }
@@ -81,11 +87,6 @@ namespace While.AST.Statements {
         public TypedExpression<int> Expression {
             get { return (TypedExpression<int>)this[1]; }
             set { this[1] = value; }
-        }
-
-        public Assign(Variable var, TypedExpression<int> exp) {
-            AddChild(var);
-            AddChild(exp);
         }
 
         public override string ToString() {
@@ -132,19 +133,6 @@ namespace While.AST.Statements {
 
     public class Call : Statement {
 
-        private string _name;
-        public string ProcedureName {
-            get { return _name; }
-            set { _name = value; }
-        }
-
-        private Token _callToken;
-        private Token _lastArgToken;
-
-        public List<Node> Expressions {
-            get { return this.ChildNodes; }
-        }
-
         public Call(string name, List<Expression> expressions, Token callToken, Token lastArgToken) {
             foreach (Expression ex in expressions) {
                 AddChild(ex);
@@ -154,11 +142,23 @@ namespace While.AST.Statements {
             _lastArgToken = lastArgToken;
         }
 
+        private string _name;
+        public string ProcedureName {
+            get { return _name; }
+            set { _name = value; }
+        }
+
+        private Token _callToken, _lastArgToken; //Needed for generating good error messages
+
+        public List<Node> Expressions {
+            get { return this.ChildNodes; }
+        }
+
         public override string ToString() {
             return string.Format("call {0}({1})", ProcedureName, Join(this, ", "));
         }
 
-        public void SanityCheck() {
+        private void SanityCheck() {
             int l = _callToken.line;
             int c = _callToken.col;
 
@@ -189,7 +189,7 @@ namespace While.AST.Statements {
                 Procedure proc = WhileProgram.Instance.Procedures.GetByName(ProcedureName);
                 if (proc.HasResultArgument) {
                     Variable v = (Variable)this[ChildNodes.Count - 1];
-                    //Create at first use
+                    //Create at first use 
                     if (Options.BookVersion && !SymbolTable.IsInScope(v.Name)) {
                         SymbolTable.DefineVariable(v.Name);
                         LocalBuilder lb = il.DeclareLocal(typeof(int));
@@ -219,13 +219,13 @@ namespace While.AST.Statements {
     /// </summary>
     public class Write : Statement {
 
+        public Write(Expression exp) {
+            AddChild(exp);
+        }
+
         public Expressions.Expression Expression {
             get { return (Expressions.Expression)this[0]; }
             set { this[0] = value; }
-        }
-
-        public Write(Expression exp) {
-            AddChild(exp);
         }
 
         public override string ToString() {
@@ -252,13 +252,13 @@ namespace While.AST.Statements {
     /// </summary>
     public class Read : Statement {
 
+        public Read(Variable var) {
+            AddChild(var);
+        }
+
         public Variable Variable {
             get { return (Variable)this[0]; }
             set { this[0] = value; }
-        }
-
-        public Read(Variable var) {
-            AddChild(var);
         }
 
         public override string ToString() {
@@ -267,12 +267,14 @@ namespace While.AST.Statements {
 
         public override void Compile(ILGenerator il) {
             EmitDebugInfo(il, 0, false);
+            //We'll run in a loop until the user gives us a real number
             Label startLabel = il.DefineLabel();
             il.MarkLabel(startLabel);
             il.Emit(OpCodes.Ldstr, Variable.Name + ": ");
             il.Emit(OpCodes.Call, typeof(System.Console).GetMethod("Write", new Type[] { typeof(string) }));
             il.Emit(OpCodes.Call, typeof(System.Console).GetMethod("ReadLine"));
 
+            //Declare at first use
             if (Options.BookVersion && !SymbolTable.IsInScope(Variable.Name)) {
                 SymbolTable.DefineVariable(Variable.Name);
                 LocalBuilder lb = il.DeclareLocal(typeof(int));
@@ -296,9 +298,14 @@ namespace While.AST.Statements {
     
     
     /// <summary>
-    /// Block with variable declarations && statements
+    /// Block with variable declarations and statements
     /// </summary>
     public class Block : Statement {
+
+        public Block(VariableDeclarationSequence vars, StatementSequence stmts) {
+            AddChild(vars);
+            AddChild(stmts);
+        }
 
         public VariableDeclarationSequence Variables {
             get { return (VariableDeclarationSequence) this[0];}
@@ -308,11 +315,6 @@ namespace While.AST.Statements {
         public StatementSequence Statements {
             get { return (StatementSequence) this[1];}
             set { this[1] = value;}
-        }
-
-        public Block(VariableDeclarationSequence vars, StatementSequence stmts) {
-            AddChild(vars);
-            AddChild(stmts);
         }
 
         public override string ToString() {
@@ -341,6 +343,12 @@ namespace While.AST.Statements {
     /// </summary>
     public class If : Statement {
 
+        public If(TypedExpression<bool> exp, StatementSequence ifBranch, StatementSequence elseBranch) {
+            AddChild(exp);
+            AddChild(ifBranch);
+            AddChild(elseBranch);
+        }
+
         public TypedExpression<bool> Expression {
             get { return (TypedExpression<bool>)this[0]; }
             set { this[0] = value; }
@@ -354,12 +362,6 @@ namespace While.AST.Statements {
         public StatementSequence ElseBranch {
             get { return (StatementSequence)this[2]; }
             set { this[2] = value; }
-        }
-
-        public If(TypedExpression<bool> exp, StatementSequence ifBranch, StatementSequence elseBranch) {
-            AddChild(exp);
-            AddChild(ifBranch);
-            AddChild(elseBranch);
         }
 
         public override string ToString() {
