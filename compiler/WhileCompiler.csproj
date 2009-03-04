@@ -35,6 +35,8 @@
       <HintPath>..\lib\nunit.framework.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
@@ -44,6 +46,7 @@
     <Compile Include="AST\Node.cs" />
     <Compile Include="AST\Procedure.cs" />
     <Compile Include="AST\Sequences.cs" />
+    <Compile Include="AST\Visitor.cs" />
     <Compile Include="AST\WhileProgram.cs" />
     <Compile Include="AST\Statements.cs" />
     <Compile Include="Environment.cs" />

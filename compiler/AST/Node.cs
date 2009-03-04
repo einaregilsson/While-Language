@@ -73,6 +73,12 @@ namespace While.AST {
         private List<SequencePoint> _sequencePoints = new List<SequencePoint>();
         public List<SequencePoint> SequencePoints { get { return _sequencePoints; } }
 
+        private Node _parent;
+        public Node Parent {
+            get { return _parent; }
+            set { _parent = value; }
+        }
+
         private static ModuleBuilder _module;
         public static ModuleBuilder Module {
             get { return _module; }
@@ -94,7 +100,10 @@ namespace While.AST {
 
         public Node this[int index] {
             get { return _children[index]; }
-            set { _children[index] = value; }
+            set {
+                value.Parent = this;
+                _children[index] = value; 
+            }
         }
 
         public void MarkSequencePoint(ILGenerator il, SequencePoint seq) {
@@ -102,6 +111,9 @@ namespace While.AST {
         }
 
         public void AddChild(Node child) {
+            if (child != null) {
+                child.Parent = this;
+            }
             _children.Add(child);
         }
 
@@ -123,6 +135,23 @@ namespace While.AST {
                 if (addNOP) {
                     il.Emit(OpCodes.Nop);
                 }
+            }
+        }
+
+        public void Accept(Visitor visitor) {
+            if (visitor == null) {
+                throw new ArgumentNullException("visitor");
+            }
+            if (visitor.VisitParentBeforeChildren) {
+                visitor.VisitNode(this);
+            }
+            foreach (Node child in ChildNodes) {
+                if (child != null) {
+                    child.Accept(visitor);
+                }
+            }
+            if (!visitor.VisitParentBeforeChildren) {
+                visitor.VisitNode(this);
             }
         }
 

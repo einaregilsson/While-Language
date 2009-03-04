@@ -40,8 +40,7 @@ namespace While {
             }
             bool gotOut = false;
             _inputFile = args[args.Length - 1];
-            _outputFile = Path.GetFileName(Regex.Replace(@"\.w(hile)?$", _inputFile, ""));
-
+            _outputFile = Regex.Replace(Path.GetFileName(_inputFile), @"\.w(hile)?$", "");
             foreach (string arg in args) {
                 string larg = arg.ToLower();
                 _help |= larg == "/?" || larg == "/help";

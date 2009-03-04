@@ -83,6 +83,7 @@ namespace While {
                 return 0;
             } catch (Exception ex) {
                 Console.Error.WriteLine("ERROR: " + ex.Message);
+                Console.Error.WriteLine(ex.StackTrace);
                 return 1;
             }
         }
