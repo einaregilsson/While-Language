@@ -4,7 +4,7 @@ all: wc plugins
 wc:
 	@echo Compiling While compiler...
 	@mkdir -p bin
-	@rm -f bin/*
+	@rm -f -r bin/*
 	gmcs /t:exe /out:bin/wc.exe /reference:lib/nunit.framework.dll /recurse:compiler/*.cs
 	@echo Type \'mono bin/wc.exe\' to start the compiler
 

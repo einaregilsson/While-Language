@@ -38,7 +38,8 @@ namespace While {
             string path;
             path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().GetName().CodeBase);
             path = Path.Combine(path, "plugins");
-            path = Regex.Replace(path,@"^file\:(/|\\)+", "");
+            path = Regex.Replace(path,@"^file\:(/|\\){1,2}", "");
+            Console.WriteLine(path);
             if (!Directory.Exists(path)) {
                 Console.Error.WriteLine("No plugins folder found, no plugins will be loaded!");
                 return;
