@@ -10,7 +10,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WhileCompiler", "compiler\W
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExamplePlugins", "plugins\ExamplePlugins.csproj", "{1140E6D6-E45A-44BA-BA12-BF8AF2387C6D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WhileLanguageService", "WhileLanguageService\WhileLanguageService.csproj", "{66E611EE-84D8-4EB9-9A33-164A53E00553}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "While.LanguageService", "While.LanguageService\While.LanguageService.csproj", "{697144D5-DC3B-484B-9747-E79CB6D7AC97}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -26,10 +26,10 @@ Global
 		{1140E6D6-E45A-44BA-BA12-BF8AF2387C6D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1140E6D6-E45A-44BA-BA12-BF8AF2387C6D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1140E6D6-E45A-44BA-BA12-BF8AF2387C6D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{66E611EE-84D8-4EB9-9A33-164A53E00553}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{66E611EE-84D8-4EB9-9A33-164A53E00553}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{66E611EE-84D8-4EB9-9A33-164A53E00553}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{66E611EE-84D8-4EB9-9A33-164A53E00553}.Release|Any CPU.Build.0 = Release|Any CPU
+		{697144D5-DC3B-484B-9747-E79CB6D7AC97}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{697144D5-DC3B-484B-9747-E79CB6D7AC97}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{697144D5-DC3B-484B-9747-E79CB6D7AC97}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{697144D5-DC3B-484B-9747-E79CB6D7AC97}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

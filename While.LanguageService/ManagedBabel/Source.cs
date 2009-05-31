@@ -15,27 +15,32 @@ using System.Text;
 using Microsoft.VisualStudio.TextManager.Interop;
 using Microsoft.VisualStudio.Package;
 
-namespace Demo
+namespace Babel
 {
-    public class Source : Microsoft.VisualStudio.Package.Source
-    {
-        public Source(LanguageService service, IVsTextLines textLines, Colorizer colorizer)
-            : base(service, textLines, colorizer)
-        {
-        }
+	public class Source : Microsoft.VisualStudio.Package.Source
+	{
+		public Source(BabelLanguageService service, IVsTextLines textLines, Colorizer colorizer)
+			: base(service, textLines, colorizer)
+		{
+		}
 
-        private object parseResult;
-        public object ParseResult
-        {
-            get { return parseResult; }
-            set { parseResult = value; }
-        }
+		private object parseResult;
+		public object ParseResult
+		{
+			get { return parseResult; }
+			set { parseResult = value; }
+		}
 
-        private IList<TextSpan[]> braces;
-        public IList<TextSpan[]> Braces
+		private IList<TextSpan[]> braces;
+		public IList<TextSpan[]> Braces
+		{
+			get { return braces; }
+			set { braces = value; }
+		}
+
+        public override CommentInfo GetCommentFormat()
         {
-            get { return braces; }
-            set { braces = value; }
+             return Configuration.MyCommentInfo;
         }
-    }
+	}
 }

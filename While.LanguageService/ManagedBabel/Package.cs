@@ -1,3 +1,14 @@
+/***************************************************************************
+
+Copyright (c) Microsoft Corporation. All rights reserved.
+This code is licensed under the Visual Studio SDK license terms.
+THIS CODE IS PROVIDED *AS IS* WITHOUT WARRANTY OF
+ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING ANY
+IMPLIED WARRANTIES OF FITNESS FOR A PARTICULAR
+PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
+
+***************************************************************************/
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -6,19 +17,19 @@ using Microsoft.VisualStudio.OLE.Interop;
 using MPF = Microsoft.VisualStudio.Package;
 using System.ComponentModel.Design;
 
-namespace Demo
+namespace Babel
 {
-    public class IronyPackage : Microsoft.VisualStudio.Shell.Package, IOleComponent
+    public abstract class BabelPackage : Microsoft.VisualStudio.Shell.Package, IOleComponent
     {
         uint componentID = 0;
-        public IronyPackage()
+        protected BabelPackage()
         {
             ServiceCreatorCallback callback = new ServiceCreatorCallback(
                 delegate(IServiceContainer container, Type serviceType)
                 {
-                    if (typeof(IronyLanguageService) == serviceType)
+                    if (typeof(CCS.LanguageService.WhileLanguageService) == serviceType)
                     {
-                        IronyLanguageService language = new IronyLanguageService();
+                        CCS.LanguageService.WhileLanguageService language = new CCS.LanguageService.WhileLanguageService();
                         language.SetSite(this);
 
                         // register for idle time callbacks
@@ -45,7 +56,7 @@ namespace Demo
                 });
 
             // proffer the LanguageService
-            (this as IServiceContainer).AddService(typeof(IronyLanguageService), callback, true);
+            (this as IServiceContainer).AddService(typeof(CCS.LanguageService.WhileLanguageService), callback, true);
         }
 
         protected override void Dispose(bool disposing)
@@ -76,8 +87,8 @@ namespace Demo
 
         public int FDoIdle(uint grfidlef)
         {
-            IronyLanguageService ls = GetService(typeof(IronyLanguageService)) as IronyLanguageService;
-
+            BabelLanguageService ls = GetService(typeof(CCS.LanguageService.WhileLanguageService)) as BabelLanguageService;
+            
             if (ls != null)
             {
                 ls.OnIdle((grfidlef & (uint)_OLEIDLEF.oleidlefPeriodic) != 0);
