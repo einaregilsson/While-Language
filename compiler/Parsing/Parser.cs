@@ -124,17 +124,12 @@ namespace While.Parsing {
 
     } // end Parser
 
-    public class Error {
-        public int Line { get; set; }
-        public int Column { get; set; }
-        public string Message { get; set; }
-    }
-    public class Warning : Error { }
+
     public partial class Errors {
         public int count = 0;                                    // number of errors detected
         public System.IO.TextWriter errorStream = Console.Out;   // error messages go to this stream
         public string errMsgFormat = "-- line {0} col {1}: {2}"; // 0=line, 1=column, 2=text
-        public System.Collections.Generic.List<Error> errors = new System.Collections.Generic.List<Error>();
+
         public void SynErr(int line, int col, int n) {
             string s;
             s = GetErrorMessage(n);
@@ -142,20 +137,21 @@ namespace While.Parsing {
                 s = "error " + n;
             }
             errorStream.WriteLine(errMsgFormat, line, col, s);
-            errors.Add(new Error() { Line = line, Column = col, Message = s });
-
             count++;
         }
 
         public void SemErr(int line, int col, string s) {
             errorStream.WriteLine(errMsgFormat, line, col, s);
-            errors.Add(new Error() { Line = line, Column = col, Message = s });
+            count++;
+        }
+
+        public void SemErr(string s) {
+            errorStream.WriteLine(s);
             count++;
         }
 
         public void Warning(int line, int col, string s) {
             errorStream.WriteLine(errMsgFormat, line, col, s);
-            errors.Add(new Warning() { Line = line, Column = col, Message = s });
         }
 
         public void Warning(string s) {
