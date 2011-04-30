@@ -68,7 +68,7 @@ Below is a description of the While syntax, mostly taken from the [http://www.am
 
 <table>
   <tr>
-    <td>_a_</td>
+    <td><i>a</i></td>
     <td>=</td>
     <td>Arithmetic expressions</td>
   </tr>
@@ -108,7 +108,7 @@ Below is a description of the While syntax, mostly taken from the [http://www.am
     <td>Programs</td>
   </tr>
   <tr>
-    <td>_op,,a,,_</td>
+    <td>_op<sub>a</sub>_</td>
     <td>=</td>
     <td>Aerithmetic operators (+ - / * %)</td>
   </tr>
@@ -156,7 +156,7 @@ Below is a description of the While syntax, mostly taken from the [http://www.am
   <tr>
     <td>_D_</td>
     <td>::=</td>
-    <td>*proc* _p_(*val* _x_, *res* _y_) *is* _S_ *end*</td>
+    <td>*proc* _p_(<b>val</b> _x_, *res* _y_) *is* _S_ *end*</td>
   </tr>
   <tr>
     <td>_P_</td>
