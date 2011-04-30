@@ -183,6 +183,6 @@ When using the `/coursesyntax` these changes are made to the abstract syntax:
   <tr>
     <td>_S_</td>
     <td>::=</td>
-    <td>... | *begin* _V_;_S_ *end* | *if* _b_ *then* _S,,1,,_ *else* _S,,2,,_ *fi* | *while* _b_ *do* _S_ *od*</td>
+    <td>... | <b>begin</b> <i>V</i>;<i>S</i> <b>end</b> | <b>if</b> _b_ <b>then</b> <i>S<sub>1</sub></i> *else* _S,,2,,_ *fi* | *while* _b_ *do* _S_ *od*</td>
   </tr>
 </table>
