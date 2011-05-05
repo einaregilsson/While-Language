@@ -1,5 +1,5 @@
 =A While language compiler for the .NET platform=
-
+__NOTOC__
 ==What is the While language?==
 
 The While programming language is introduced in the book [http://www.amazon.com/Principles-Program-Analysis-Flemming-Nielson/dp/3540654100/ref=pd_bbs_sr_1?ie=UTF8&s=books&qid=1235741633&sr=8-1 Principles of Program Analysis] by Nielson, Nielson and Hankin. It is a simple imperative language with integer variables and integer and boolean expressions. For branching it has an if-else statement and for looping it has a while statement. Other statements it has is an assignment to assign integer expressions to variables, read and write statements to read input from user and print to screen, and a skip statement that has no effect. The language also contains procedures that can take 0-n parameters by value and 0 or 1 result parameter. All parameters are integers.
@@ -133,7 +133,7 @@ Below is a description of the While syntax, mostly taken from the [http://www.am
   <tr>
     <td><i>S</i></td>
     <td>::=</td>
-    <td>_x</i> := <i>a</i> | <b>skip</b> | <i>S<sub>1</sub><i>;</i>S<sub>2</sub></i> | <b>if</b> <i>b</i> <b>then</b> <i>S<sub>1</sub></i> <b>else</b> <i>S<sub>2</sub></i> | <b>while</b> <i>b</i> <b>do</b> <i>S</i> |</td>
+    <td><i>x</i> := <i>a</i> | <b>skip</b> | <i>S<sub>1</sub><i>;</i>S<sub>2</sub></i> | <b>if</b> <i>b</i> <b>then</b> <i>S<sub>1</sub></i> <b>else</b> <i>S<sub>2</sub></i> | <b>while</b> <i>b</i> <b>do</b> <i>S</i> |</td>
   </tr>
   <tr>
     <td></td>
