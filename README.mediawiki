@@ -60,57 +60,57 @@ Below is a description of the While syntax, mostly taken from the [http://www.am
     <td>Arithmetic expressions</td>
   </tr>
   <tr>
-    <td>_b_</td>
+    <td><i>b</i></td>
     <td>=</td>
     <td>Boolean expressions</td>
   </tr>
   <tr>
-    <td>_x,y_</td>
+    <td><i>x,y</i></td>
     <td>=</td>
     <td>Variables</td>
   </tr>
   <tr>
-    <td>_n_</td>
+    <td><i>n</i></td>
     <td>=</td>
     <td>Numerals</td>
   </tr>
   <tr>
-    <td>_p_</td>
+    <td><i>p</i></td>
     <td>=</td>
     <td>Procedures</td>
   </tr>
   <tr>
-    <td>_S_</td>
+    <td><i>S</i></td>
     <td>=</td>
     <td>Statements</td>
   </tr>
   <tr>
-    <td>_D_</td>
+    <td><i>D</i></td>
     <td>=</td>
     <td>Declarations</td>
   </tr>
   <tr>
-    <td>_P_</td>
+    <td><i>P</i></td>
     <td>=</td>
     <td>Programs</td>
   </tr>
   <tr>
-    <td>_op<sub>a</sub>_</td>
+    <td><i>op<sub>a</sub></i></td>
     <td>=</td>
     <td>Aerithmetic operators (+ - / * %)</td>
   </tr>
   <tr>
-    <td>_op,,b,,_</td>
+    <td><i>op<sub>b</sub></i></td>
     <td>=</td>
     <td>Boolean operators (and or xor)</td>
   </tr>
   <tr>
-    <td>_op,,r,,_</td>
+    <td><i>op<sub>r</sub></i></td>
     <td>=</td>
     <td>Relational operators (== != `<` `>` `<=` `>=`)</td>
   </tr>
   <tr>
-    <td>_op,,bt,,_</td>
+    <td><i>op<sub>bt</sub></i></td>
     <td>=</td>
     <td>Bitwise operators (`<<` `>>` & | ^)</td>
   </tr>
@@ -121,34 +121,34 @@ Below is a description of the While syntax, mostly taken from the [http://www.am
 
 <table>
   <tr>
-    <td>_a_</td>
+    <td><i>a</i></td>
     <td>::=</td>
-    <td>_x_ | _n_ | _a,,1,, op,,a,, a,,2,,_ | _a,,1,, op,,bt,, a,,2,,_</td>
+    <td><i>x</i> | <i>n</i> | <i>a<sub>1</sub> op<sub>a</sub> a<sub>2</sub></i> | <i>a<sub>1</sub> op<sub>bt</sub> a<sub>2</sub></i></td>
   </tr>
   <tr>
-    <td>_b_</td>
+    <td><i>b</i></td>
     <td>::=</td>
-    <td>*true* | *false* | *not* _b_ | _b,,1,, op,,b,, ,,2,,_ | _a,,1,, op,,r,, a,,2,,_</td>
+    <td><b>true</b> | <b>false</b> | <b>not</b> <i>b</i> | <i>b<sub>1</sub> op<sub>b</sub> <sub>2</sub></i> | <i>a<sub>1</sub> op<sub>r</sub> a<sub>2</sub></i></td>
   </tr>
   <tr>
-    <td>_S_</td>
+    <td><i>S</i></td>
     <td>::=</td>
-    <td>_x_ := _a_ | *skip* | _S,,1,,_;_S,,2,,_ | *if* _b_ *then* _S,,1,,_ *else* _S,,2,,_ | *while* _b_ *do* _S_ |</td>
+    <td>_x</i> := <i>a</i> | <b>skip</b> | <i>S<sub>1</sub><i>;</i>S<sub>2</sub></i> | <b>if</b> <i>b</i> <b>then</b> <i>S<sub>1</sub></i> <b>else</b> <i>S<sub>2</sub></i> | <b>while</b> <i>b</i> <b>do</b> <i>S</i> |</td>
   </tr>
   <tr>
     <td></td>
     <td></td>
-    <td>*write* _a_ | *write* _b_ | *read* _x_ | *call* _p_(_x, y_)</td>
+    <td><b>write</b> <i>a</i> | <b>write</b> <i>b</i> | <b>read</b> <i>x</i> | <b>call</b> <i>p</i>(<i>x, y</i>)</td>
   </tr>
   <tr>
-    <td>_D_</td>
+    <td><i>D</i></td>
     <td>::=</td>
-    <td>*proc* _p_(<b>val</b> _x_, *res* _y_) *is* _S_ *end*</td>
+    <td><b>proc</b> <i>p</i>(<b>val</b> <i>x</i>, <b>res</b> <i>y</i>) <b>is</b> <i>S</i> <b>end</b></td>
   </tr>
   <tr>
-    <td>_P_</td>
+    <td><i>P</i></td>
     <td>::=</td>
-    <td>_S_ | *begin* _D ; S_ *end*</td>
+    <td><i>S</i> | <b>begin</b> <i>D ; S</i> <b>end</b></td>
   </tr>
 </table>
 
@@ -156,20 +156,20 @@ When using the `/coursesyntax` these changes are made to the abstract syntax:
 
 <table>
   <tr>
-    <td>_V_</td>
+    <td><i>V</i></td>
     <td>=</td>
     <td>Variable Declaration</td>
   </tr>
 </table>
 <table>
   <tr>
-    <td>_V_</td>
+    <td><i>V</i></td>
     <td>::=</td>
-    <td>*var* _x_ | _V_;_V_</td>
+    <td><b>var</b> <i>x</i> | <i>V</i>;<i>V</i></td>
   </tr>
   <tr>
-    <td>_S_</td>
+    <td><i>S</i></td>
     <td>::=</td>
-    <td>... | <b>begin</b> <i>V</i>;<i>S</i> <b>end</b> | <b>if</b> _b_ <b>then</b> <i>S<sub>1</sub></i> *else* _S,,2,,_ *fi* | *while* _b_ *do* _S_ *od*</td>
+    <td>... | <b>begin</b> <i>V</i>;<i>S</i> <b>end</b> | <b>if</b> <i>b</i> <b>then</b> <i>S<sub>1</sub> </i> <b>else</b> <i>S<sub>2</sub></i> <b>fi</b> | <b>while</b> <i>b</i> <b>do</b> <i>S</i> <b>od</b></td>
   </tr>
 </table>
