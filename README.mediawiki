@@ -16,7 +16,7 @@ The source is licensed under the GPL v2.0. If that is problematic for you for so
 
 ==Command line options==
 
-The compiler is invoked as "`wc.exe [options] filename`". The possible options are:
+The compiler is invoked as "`wc.exe [[options]] filename`". The possible options are:
 <pre>
 /? or /help            Print a help message
 
