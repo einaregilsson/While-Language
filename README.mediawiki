@@ -1,16 +1,5 @@
 =A While language compiler for the .NET platform=
 
-  * [#What_is_the_While_language? What is the While language?]
-  * [#Why_a_compiler_for_a_toy_language? Why a compiler for a toy language?]
-  * [#License License]
-  * [#Command_line_options Command line options]
-  * [#Course_Syntax_(the_/coursesyntax_switch) Course Syntax (the /coursesyntax_switch)]
-  * [#Debugging_the_While_language Debugging the While language]
-  * [#Plugin_Architecture Plugin Architecture]
-  * [#While_Abstract_Syntax While Abstract Syntax]
-    * [#Syntactic_categories Syntactic categories]
-    * [#Abstract_syntax Abstract syntax]
-
 ==What is the While language?==
 
 The While programming language is introduced in the book [http://www.amazon.com/Principles-Program-Analysis-Flemming-Nielson/dp/3540654100/ref=pd_bbs_sr_1?ie=UTF8&s=books&qid=1235741633&sr=8-1 Principles of Program Analysis] by Nielson, Nielson and Hankin. It is a simple imperative language with integer variables and integer and boolean expressions. For branching it has an if-else statement and for looping it has a while statement. Other statements it has is an assignment to assign integer expressions to variables, read and write statements to read input from user and print to screen, and a skip statement that has no effect. The language also contains procedures that can take 0-n parameters by value and 0 or 1 result parameter. All parameters are integers.
@@ -21,11 +10,10 @@ The While programming language is introduced in the book [http://www.amazon.com/
 My masters project at DTU involves writing compilers for the .NET platform and since I had never written a compiler before I decided to start with this simple language. This language is also used in the Program Analysis course that is taught at DTU by the authors of the book, and I thought it might be useful for students in the course to be able to try compiling their programs on a real platform, and see what difference their optimizations make in the final compiled executable. Another benefit is that the compiled programs can be debugged using a free .NET graphical debugger. As for the name, compilers are often named with the rule "abbreviation of language name + c" so for C# we have csc.exe, for Visual Basic we have vbc.exe. Using that rule I came up with the (rather unfortunate) name wc.exe.
 
 [http://while-language.googlecode.com/files/wc-1.0-bin.zip Download the compiler v1.0]<br/>
-[http://while-language.googlecode.com/files/wc-1.0-src.zip Download the compiler sources v1.0]
 
 ==License==
 
-The source is licensed under the GPL v2.0, feel free to do what you want with it. The current version is written C#, the first version was written in the programming language Boo, which is a relatively new language for the .NET platform, similar to a statically typed Python. That version is available as a branch in the source repository, but is no longer updated. All future versions will be in C# only.
+The source is licensed under the GPL v2.0. If that is problematic for you for some reason, contact me and we can work something out.
 
 ==Command line options==
 
@@ -47,7 +35,6 @@ The input file can also be specified as "STDIN", in which case the compiler read
 {{{analyzer.exe somefile.while | wc.exe /out:somefile.exe STDIN}}}
 
 	
-
 ==Course Syntax (the `/coursesyntax` switch)==
 
 By default the compiler compiles While exactly as it is presented in the [http://www.amazon.com/Principles-Program-Analysis-Flemming-Nielson/dp/3540654100/ref=pd_bbs_sr_1?ie=UTF8&s=books&qid=1235741633&sr=8-1 Principles of Program Analysis] book. It can compile the examples from the book without modifications. This means that variables are not declared explicitly, and that () are used to group together multiple statements in if-else and while blocks. However, when I took the Program Analysis course at DTU and implemented some static analysis for it, we were given a slighly modified specification of the While language. In this spec variables had to be declared before use, and could only be declared inside begin-end blocks, and instead of using () in if and while statements, they ended with fi and od respectively. When the compiler is run with the /coursesyntax switch it will use this syntax and give errors on undeclared variables and if without fi and while ... do without od.
